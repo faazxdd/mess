@@ -34,6 +34,7 @@ nav button{flex:1;background:none;color:#64748b;font-size:11px;padding:8px 2px;m
 #md{position:fixed;inset:0;background:#0b1f3acc;display:none;align-items:flex-end;z-index:9}
 #md>div{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
 img.rc{max-width:100%;border-radius:12px;margin:8px 0}.sm{font-size:13px;color:#64748b}
+.sc{padding:10px 12px;border-radius:12px;margin-bottom:10px;background:#f8fafc;border-left:5px solid}.neg2{border-color:var(--r)}.pos2{border-color:var(--g)}
 @media print{nav,header,.np{display:none!important}body{background:#fff;padding:0}}
 </style></head><body>
 <header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
@@ -55,14 +56,18 @@ while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);cons
 return{p,t,sh,bal,tr,n:l.length}}
 const inM=m=>all.filter(i=>i.date.startsWith(m));
 const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
-const bal=(x)=>`<span class="${x<0?'neg':'pos'}">${x<0?'owes ':x>0?'gets back ':''}AED ${f(Math.abs(x))}</span>`;
-const settle=c=>c.tr.length?c.tr.map(t=>`<div class="inv"><b>${M[t.from]}</b> pays <b>${M[t.to]}</b><div class="v neg">AED ${f(t.amt)}</div></div>`).join(''):'<p class="sm">All settled. No transfers needed.</p>';
+const bal=x=>x===0?'<span class="sm">Balanced ✅</span>':x<0?`<span class="neg">🔴 Owes · AED ${f(-x)}</span>`:`<span class="pos">🟢 Gets back · AED ${f(x)}</span>`;
+const settle=c=>{const by={};c.tr.forEach(x=>(by[x.from]=by[x.from]||[]).push(x));
+const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm">Pays to 👇</div>${l.map(x=>`<div class="row"><span>➡️ ${M[x.to]}</span><b>AED ${f(x.amt)}</b></div>`).join('')}</div>`}).join('');
+const get=c.bal.map((x,i)=>x>0?`<div class="sc pos2"><div class="row"><b>${M[i]}</b><b class="pos">AED ${f(x)}</b></div><div class="sm">Total to receive</div></div>`:'').join('');
+return c.tr.length?`<h3>🔴 Need to pay</h3>${pay}<h3>🟢 Will receive</h3>${get}`:'<p class="sm">All settled ✅ Nobody owes anyone.</p>'};
+function shr(){const c=calc(inM(mon));let s=`🧾 Mess ${mon}\nTotal expenses: AED ${f(c.t)}\nEqual share: AED ${f(c.t/4)}\n\n`;M.forEach((n,i)=>s+=`${n}: Paid AED ${f(c.p[i])}\n`);s+='\n';c.tr.forEach(t=>s+=`${M[t.from]} ➡️ ${M[t.to]}: AED ${f(t.amt)}\n`);navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s)}
 function dash(){const c=calc(inM(mon)),mx=Math.max(...c.p,1);
 const ms=[...Array(6)].map((_,k)=>{const d=new Date(+mon.slice(0,4),+mon.slice(5)-6+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}),mt=ms.map(x=>calc(inM(x)).t),mm=Math.max(...mt,1);
-return mb()+`<div class="grid"><div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div></div><div class="card"><div class="k">Invoices</div><div class="v">${c.n}</div></div><div class="card"><div class="k">Avg per person</div><div class="v">AED ${f(c.t/4)}</div></div><div class="card"><div class="k">Members</div><div class="v">4</div></div></div>
+return mb()+`<div class="grid"><div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div></div><div class="card"><div class="k">Invoices</div><div class="v">${c.n}</div></div><div class="card"><div class="k">Equal share</div><div class="v">AED ${f(c.t/4)}</div></div><div class="card"><div class="k">Members</div><div class="v">4</div></div></div>
 <div class="card"><h3>Spending by member</h3>${M.map((n,i)=>`<div class="row"><b>${n}</b><span>AED ${f(c.p[i])}</span></div><div class="bar"><i style="width:${c.p[i]/mx*100}%"></i></div>`).join('')}</div>
-<div class="card"><h3>Payment balance</h3>${M.map((n,i)=>`<div class="row inv"><b>${n}</b>${bal(c.bal[i])}</div>`).join('')}</div>
-<div class="card"><h3>Last 6 months</h3><div class="cols">${ms.map((x,i)=>`<div><span>${mt[i]?f(mt[i]).replace(/\.00$/,''):''}</span><i style="height:${mt[i]/mm*80}px;${x===mon?'background:#16a34a':''}"></i>${x.slice(2)}</div>`).join('')}</div></div>`}
+<div class="card"><h3>Who gets and who owes</h3>${M.map((n,i)=>`<div class="row inv"><b>${n}</b>${bal(c.bal[i])}</div>`).join('')}</div>
+<div class="card"><h3>Last 6 months</h3><div class="cols">${ms.map((x,i)=>`<div><span>${mt[i]?f(mt[i]).replace(/\.00$/,''):''}</span><i style="height:${mt[i]/mm*80}px;${x===mon?'background:#16a34a':''}"></i>${'JanFebMarAprMayJunJulAugSepOctNovDec'.substr((+x.slice(5)-1)*3,3)}</div>`).join('')}</div></div>`}
 function add(){const o=edit?all.find(i=>i.id===edit):{date:today(),payer:-1};
 return `<div class="card"><h3>${edit?'Edit':'New'} invoice</h3>
 <label>Purchase date</label><input id="dt" type="date" value="${o.date}">
@@ -91,9 +96,9 @@ function show(id){const i=all.find(x=>x.id===id);$('#mc').innerHTML=`<h3>${e(i.s
 <div class="grid"><button onclick="edit=${id};view='add';cm();go()">Edit</button><button class="del" onclick="del(${id})">Delete</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
 const cm=()=>$('#md').style.display='none';
 async function del(id){if(!confirm('Delete this invoice permanently? Export a backup first if unsure.'))return;await rq(tx('readwrite').delete(id));await load();cm();go()}
-function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total</div><div class="v">AED ${f(c.t)}</div><div class="sm">Equal share ≈ AED ${f(c.t/4)} each</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div>`}
-function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
-<div class="card"><h3>Members</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
+function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">📤 Send to WhatsApp</button>`}
+function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total expenses</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
+<div class="card"><h3>Everyone</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
 <div class="card"><h3>Settlement</h3>${settle(c)}</div>
 <div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">🖨 Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label>Restore from backup</label><input type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
 const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.append(a);a.click();a.remove()};
