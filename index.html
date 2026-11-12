@@ -448,4 +448,8 @@ $('#md').onclick=ev=>{if(ev.target.id==='md')cm()};
 const o=indexedDB.open('mess-manager',1);o.onupgradeneeded=()=>o.result.createObjectStore('inv',{keyPath:'id',autoIncrement:true});
 o.onsuccess=async()=>{db=o.result;await load();go();navigator.storage?.persist?.()};o.onerror=()=>alert('Storage unavailable. Do not use Private Browsing.');
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
-</script></body></html>
+</script><audio id="introMusic" src="intro.mp3" preload="auto"></audio>
+
+<button onclick="document.getElementById('introMusic').play()">
+  🎵 Play Music
+</button></body></html>
