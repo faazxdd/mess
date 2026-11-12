@@ -389,11 +389,11 @@ while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);cons
 return{p,t,sh,bal,tr,n:l.length}}
 const inM=m=>all.filter(i=>i.date.startsWith(m));
 const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
-const bal=x=>x===0?'<span class="sm">Balanced ✅</span>':x<0?`<span class="neg">🔴 Owes · AED ${f(-x)}</span>`:`<span class="pos">🟢 Gets back · AED ${f(x)}</span>`;
+const bal=x=>x===0?'<span class="sm">Balanced </span>':x<0?`<span class="neg">🤌 Need To Pay · AED ${f(-x)}</span>`:`<span class="pos">🟢 Gets back · AED ${f(x)}</span>`;
 const settle=c=>{const by={};c.tr.forEach(x=>(by[x.from]=by[x.from]||[]).push(x));
 const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm">Pays to 👇</div>${l.map(x=>`<div class="row"><span>➡️ ${M[x.to]}</span><b>AED ${f(x.amt)}</b></div>`).join('')}</div>`}).join('');
 const get=c.bal.map((x,i)=>x>0?`<div class="sc pos2"><div class="row"><b>${M[i]}</b><b class="pos">AED ${f(x)}</b></div><div class="sm">Total to receive</div></div>`:'').join('');
-return c.tr.length?`<h3>🔴 Need to pay</h3>${pay}<h3>🟢 Will receive</h3>${get}`:'<p class="sm">All settled ✅ Nobody owes anyone.</p>'};
+return c.tr.length?`<h3> Need to pay</h3>${pay}<h3> Will receive</h3>${get}`:'<p class="sm">All settled ✅ Nobody owes anyone.</p>'};
 function shr(){const c=calc(inM(mon));let s=`🧾 Mess ${mon}\nTotal expenses: AED ${f(c.t)}\nEqual share: AED ${f(c.t/4)}\n\n`;M.forEach((n,i)=>s+=`${n}: Paid AED ${f(c.p[i])}\n`);s+='\n';c.tr.forEach(t=>s+=`${M[t.from]} ➡️ ${M[t.to]}: AED ${f(t.amt)}\n`);navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s)}
 function dash(){const c=calc(inM(mon)),mx=Math.max(...c.p,1);
 const ms=[...Array(6)].map((_,k)=>{const d=new Date(+mon.slice(0,4),+mon.slice(5)-6+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}),mt=ms.map(x=>calc(inM(x)).t),mm=Math.max(...mt,1);
