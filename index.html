@@ -318,7 +318,61 @@ img.rc {
 </style></head><body>
 <header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
 <main id="app"></main><div id="md"><div id="mc"></div></div>
-<nav><button data-v="dash"><b>📊</b>Dashboard</button><button data-v="add"><b>➕</b>Add</button><button data-v="hist"><b>🧾</b>History</button><button data-v="set"><b>🔁</b>Settle</button><button data-v="rep"><b>📅</b>Reports</button></nav>
+</style></head><body>
+<header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
+<main id="app"></main><div id="md"><div id="mc"></div></div>
+<nav>
+  <button data-v="dash">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="dashGrad" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dcd6f7"/></linearGradient>
+        <filter id="dashShadow" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity="0.3"/></filter>
+      </defs>
+      <g filter="url(#dashShadow)" fill="url(#dashGrad)"><rect x="3" y="3" width="8" height="8" rx="2.5"/><rect x="13" y="3" width="8" height="8" rx="2.5"/><rect x="3" y="13" width="8" height="8" rx="2.5"/><rect x="13" y="13" width="8" height="8" rx="2.5"/></g>
+    </svg>
+    Dashboard
+  </button>
+  <button data-v="add">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="addGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#e8e2f8"/></linearGradient>
+        <filter id="addShadow" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#000" flood-opacity="0.35"/></filter>
+      </defs>
+      <g filter="url(#addShadow)"><circle cx="12" cy="12" r="10" fill="url(#addGrad)"/><path d="M12 7v10M7 12h10" stroke="#160d2b" stroke-width="2.2" stroke-linecap="round"/></g>
+    </svg>
+    Add
+  </button>
+  <button data-v="hist">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="histGrad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dcd6f7"/></linearGradient>
+        <filter id="histShadow" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity="0.3"/></filter>
+      </defs>
+      <g filter="url(#histShadow)" fill="url(#histGrad)"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 2l1.75 1.25L8.5 2l1.75 1.25L12 2l1.75 1.25L15.5 2l1.75 1.25L19 2v20l-1.75-1.25L15.5 22l-1.75-1.25L12 22l-1.75-1.25L8.5 22l-1.75-1.25L5 22V2zm3 5h5v2H8V7zm7 0h1v2h-1V7zm-7 4h5v2H8v-2zm7 0h1v2h-1v-2zm-7 4h5v2H8v-2zm7 0h1v2h-1v-2z"/></g>
+    </svg>
+    History
+  </button>
+  <button data-v="set">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="settleBg" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#f0ecfc"/></linearGradient>
+        <filter id="settleShadow" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000" flood-opacity="0.4"/></filter>
+      </defs>
+      <g filter="url(#settleShadow)"><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#settleBg)"/><path d="M10 13l-1.5-1.5a1.2 1.2 0 0 1 0-1.7l1.7-1.7a1.2 1.2 0 0 1 1.7 0l1 1m-3 4l2 2a1.2 1.2 0 0 0 1.7 0l2-2a1.2 1.2 0 0 0 0-1.7l-2-2m-3.5 3.5l-1.2 1.2m5-5l1.2-1.2" stroke="#160d2b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+    </svg>
+    Settle
+  </button>
+  <button data-v="rep">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="repGrad" x1="4" y1="5" x2="20" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dcd6f7"/></linearGradient>
+        <filter id="repShadow" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity="0.3"/></filter>
+      </defs>
+      <g filter="url(#repShadow)" fill="url(#repGrad)"><rect x="4" y="11" width="4" height="9" rx="1.5"/><rect x="10" y="5" width="4" height="15" rx="1.5"/><rect x="16" y="9" width="4" height="11" rx="1.5"/></g>
+    </svg>
+    Reports
+  </button>
+</nav>
 <script>
 const M=['FAZAL','NIYAS','SHAMIL','FASAL'],$=s=>document.querySelector(s);
 const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
