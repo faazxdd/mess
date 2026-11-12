@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Mess Manager">
+<meta name="theme-color" content="#0b1f3a"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Mess Manager</title>
+<style>
+:root{--n:#0b1f3a;--g:#16a34a;--r:#dc2626;--bg:#f3f6fb;--b:#dbe3ef}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;max-width:100%;overflow-x:hidden}
+body{font:16px -apple-system,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--n);padding:env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom))}
+header{background:var(--n);color:#fff;padding:14px 16px;font-weight:700;font-size:20px}
+main{padding:14px;max-width:600px;margin:auto}
+.card{background:#fff;border-radius:16px;padding:14px;margin:0 0 12px;box-shadow:0 1px 4px #0b1f3a14}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.k{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.04em}.v{font-size:20px;font-weight:700;margin-top:2px;word-break:break-word}
+.pos{color:var(--g)}.neg{color:var(--r)}
+h3{margin:4px 0 10px;font-size:17px}
+input,select,textarea{width:100%;font:16px inherit;padding:13px;border:1px solid var(--b);border-radius:12px;background:#fff;color:var(--n);margin:4px 0 12px}
+label{font-size:13px;font-weight:600;color:#475569}
+button{font:600 16px inherit;border:0;border-radius:12px;padding:14px;background:var(--n);color:#fff;min-height:48px}
+button.big{width:100%;font-size:18px;background:var(--g);min-height:56px}
+button.alt{background:#e2e8f0;color:var(--n)}button.del{background:var(--r)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.row>*{min-width:0}
+.pay{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.pay label{display:block}.pay input{display:none}
+.pay span{display:block;text-align:center;padding:13px 4px;border:2px solid var(--b);border-radius:12px;font-weight:700;color:var(--n)}
+.pay input:checked+span{background:var(--n);color:#fff;border-color:var(--n)}
+.bar{height:14px;background:#e2e8f0;border-radius:7px;overflow:hidden;margin:4px 0 10px}.bar i{display:block;height:100%;background:var(--n)}
+.cols{display:flex;align-items:flex-end;gap:6px;height:110px}.cols div{flex:1;text-align:center;font-size:10px}.cols i{display:block;background:var(--n);border-radius:6px 6px 0 0;min-height:2px}
+.inv{padding:12px 0;border-bottom:1px solid var(--b)}.inv:last-child{border:0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--b);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:#64748b;font-size:11px;padding:8px 2px;min-height:56px}nav button.on{color:var(--n);font-weight:800}nav b{display:block;font-size:20px}
+#md{position:fixed;inset:0;background:#0b1f3acc;display:none;align-items:flex-end;z-index:9}
+#md>div{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+img.rc{max-width:100%;border-radius:12px;margin:8px 0}.sm{font-size:13px;color:#64748b}
+@media print{nav,header,.np{display:none!important}body{background:#fff;padding:0}}
+</style></head><body>
+<header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
+<main id="app"></main><div id="md"><div id="mc"></div></div>
+<nav><button data-v="dash"><b>📊</b>Dashboard</button><button data-v="add"><b>➕</b>Add</button><button data-v="hist"><b>🧾</b>History</button><button data-v="set"><b>🔁</b>Settle</button><button data-v="rep"><b>📅</b>Reports</button></nav>
+<script>
+const M=['FAZAL','NIYAS','SHAMIL','FASAL'],$=s=>document.querySelector(s);
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+let db,all=[],mon=today().slice(0,7),view='dash',edit=null,F={q:'',m:'',mo:'',d:''};
+const f=n=>(n/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tx=m=>db.transaction('inv',m).objectStore('inv');
+const rq=r=>new Promise((ok,no)=>{r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+const load=async()=>{all=await rq(tx('readonly').getAll());all.sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id)};
+function calc(l){const p=[0,0,0,0];l.forEach(i=>p[i.payer]+=i.amt);const t=p.reduce((a,b)=>a+b,0),b=Math.floor(t/4),r=t%4;
+const sh=p.map((_,i)=>b+(i<r?1:0)),bal=p.map((x,i)=>x-sh[i]),d=[],c=[],tr=[];
+bal.forEach((x,i)=>x<0?d.push([i,-x]):x>0&&c.push([i,x]));
+while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);const m=Math.min(d[0][1],c[0][1]);tr.push({from:d[0][0],to:c[0][0],amt:m});d[0][1]-=m;c[0][1]-=m;if(!d[0][1])d.shift();if(!c[0][1])c.shift()}
+return{p,t,sh,bal,tr,n:l.length}}
+const inM=m=>all.filter(i=>i.date.startsWith(m));
+const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
+const bal=(x)=>`<span class="${x<0?'neg':'pos'}">${x<0?'owes ':x>0?'gets back ':''}AED ${f(Math.abs(x))}</span>`;
+const settle=c=>c.tr.length?c.tr.map(t=>`<div class="inv"><b>${M[t.from]}</b> pays <b>${M[t.to]}</b><div class="v neg">AED ${f(t.amt)}</div></div>`).join(''):'<p class="sm">All settled. No transfers needed.</p>';
+function dash(){const c=calc(inM(mon)),mx=Math.max(...c.p,1);
+const ms=[...Array(6)].map((_,k)=>{const d=new Date(+mon.slice(0,4),+mon.slice(5)-6+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}),mt=ms.map(x=>calc(inM(x)).t),mm=Math.max(...mt,1);
+return mb()+`<div class="grid"><div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div></div><div class="card"><div class="k">Invoices</div><div class="v">${c.n}</div></div><div class="card"><div class="k">Avg per person</div><div class="v">AED ${f(c.t/4)}</div></div><div class="card"><div class="k">Members</div><div class="v">4</div></div></div>
+<div class="card"><h3>Spending by member</h3>${M.map((n,i)=>`<div class="row"><b>${n}</b><span>AED ${f(c.p[i])}</span></div><div class="bar"><i style="width:${c.p[i]/mx*100}%"></i></div>`).join('')}</div>
+<div class="card"><h3>Payment balance</h3>${M.map((n,i)=>`<div class="row inv"><b>${n}</b>${bal(c.bal[i])}</div>`).join('')}</div>
+<div class="card"><h3>Last 6 months</h3><div class="cols">${ms.map((x,i)=>`<div><span>${mt[i]?f(mt[i]).replace(/\.00$/,''):''}</span><i style="height:${mt[i]/mm*80}px;${x===mon?'background:#16a34a':''}"></i>${x.slice(2)}</div>`).join('')}</div></div>`}
+function add(){const o=edit?all.find(i=>i.id===edit):{date:today(),payer:-1};
+return `<div class="card"><h3>${edit?'Edit':'New'} invoice</h3>
+<label>Purchase date</label><input id="dt" type="date" value="${o.date}">
+<label>Shop name</label><input id="shop" value="${e(o.shop)}" placeholder="e.g. Lulu Hypermarket">
+<label>Invoice number</label><input id="no" value="${e(o.no)}">
+<label>Description</label><input id="ds" value="${e(o.desc)}" placeholder="Groceries, cleaning...">
+<label>Amount (AED)</label><input id="amt" type="number" inputmode="decimal" step="0.01" min="0" value="${o.amt?(o.amt/100).toFixed(2):''}">
+<label>Paid by</label><div class="pay">${M.map((n,i)=>`<label><input type="radio" name="pp" value="${i}" ${o.payer===i?'checked':''}><span>${n}</span></label>`).join('')}</div>
+<label>Invoice photo ${o.photo?'(saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*">
+<label>Notes (optional)</label><textarea id="nt" rows="2">${e(o.notes)}</textarea>
+<button class="big" onclick="save()">SAVE INVOICE</button>${edit?'<button class="alt" style="width:100%;margin-top:10px" onclick="edit=null;go()">Cancel edit</button>':''}</div>`}
+async function save(){const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked');
+if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an amount above 0, and who paid.');
+const o=edit?{...all.find(i=>i.id===edit)}:{};Object.assign(o,{date:g('dt'),shop:g('shop'),no:g('no'),desc:g('ds'),amt:a,payer:+p.value,notes:g('nt')});
+const fl=$('#ph').files[0];if(fl)o.photo=fl;
+try{await rq(tx('readwrite').put(o))}catch(x){return alert('Save failed: '+x)}
+edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go()}
+function hist(){let l=all.filter(i=>(!F.m||i.payer==F.m)&&(!F.mo||i.date.startsWith(F.mo))&&(!F.d||i.date===F.d)&&(!F.q||[i.shop,i.no,i.desc,i.notes].join(' ').toLowerCase().includes(F.q.toLowerCase())));
+return `<div class="card np"><input placeholder="🔍 Search shop, invoice, notes" value="${e(F.q)}" oninput="F.q=this.value;hl()">
+<select onchange="F.m=this.value;go()"><option value="">All members</option>${M.map((n,i)=>`<option value="${i}" ${F.m==i&&F.m!==''?'selected':''}>${n}</option>`).join('')}</select>
+<label>Month</label><input type="month" value="${F.mo}" onchange="F.mo=this.value;go()"><label>Exact date</label><input type="date" value="${F.d}" onchange="F.d=this.value;go()">
+<button class="alt" onclick="F={q:'',m:'',mo:'',d:''};go()">Clear filters</button></div><div class="card" id="hl">${hrows(l)}</div>`}
+const hrows=l=>l.length?`<div class="sm">${l.length} invoices · AED ${f(l.reduce((a,b)=>a+b.amt,0))}</div>`+l.map(i=>`<div class="inv" onclick="show(${i.id})"><div class="row"><b>${e(i.shop)}</b><b>AED ${f(i.amt)}</b></div><div class="sm">${i.date} · ${M[i.payer]}${i.photo?' · 📷':''}</div></div>`).join(''):'<p class="sm">No invoices found.</p>';
+function hl(){const x=F;$('#hl').innerHTML=hrows(all.filter(i=>(!x.m||i.payer==x.m)&&(!x.mo||i.date.startsWith(x.mo))&&(!x.d||i.date===x.d)&&(!x.q||[i.shop,i.no,i.desc,i.notes].join(' ').toLowerCase().includes(x.q.toLowerCase()))))}
+function show(id){const i=all.find(x=>x.id===id);$('#mc').innerHTML=`<h3>${e(i.shop)}</h3><div class="v">AED ${f(i.amt)}</div><p>Date: ${i.date}<br>Paid by: <b>${M[i.payer]}</b><br>Invoice no: ${e(i.no)||'-'}<br>Description: ${e(i.desc)||'-'}<br>Notes: ${e(i.notes)||'-'}</p>${i.photo?`<img class="rc" src="${URL.createObjectURL(i.photo)}">`:''}
+<div class="grid"><button onclick="edit=${id};view='add';cm();go()">Edit</button><button class="del" onclick="del(${id})">Delete</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
+const cm=()=>$('#md').style.display='none';
+async function del(id){if(!confirm('Delete this invoice permanently? Export a backup first if unsure.'))return;await rq(tx('readwrite').delete(id));await load();cm();go()}
+function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total</div><div class="v">AED ${f(c.t)}</div><div class="sm">Equal share ≈ AED ${f(c.t/4)} each</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div>`}
+function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
+<div class="card"><h3>Members</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
+<div class="card"><h3>Settlement</h3>${settle(c)}</div>
+<div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">🖨 Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label>Restore from backup</label><input type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
+const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.append(a);a.click();a.remove()};
+const rd=b=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(b)});
+function csv(){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';dl(new Blob(['\ufeff'+['Date,Shop,Invoice No,Description,Amount AED,Paid By,Notes',...all.map(i=>[i.date,q(i.shop),q(i.no),q(i.desc),(i.amt/100).toFixed(2),M[i.payer],q(i.notes)].join(','))].join('\r\n')],{type:'text/csv'}),'mess-expenses.csv')}
+async function bk(){const o=[];for(const i of all){const x={...i};if(i.photo)x.photo=await rd(i.photo);o.push(x)}dl(new Blob([JSON.stringify({app:'mess-manager',v:1,data:o})],{type:'application/json'}),'mess-backup-'+today()+'.json')}
+async function rs(file){if(!file)return;try{const j=JSON.parse(await file.text());if(j.app!=='mess-manager')throw 0;
+if(!confirm('Replace ALL current data with this backup ('+j.data.length+' invoices)? Download a backup first if unsure.'))return;
+const rec=[];for(const i of j.data){if(typeof i.photo==='string')i.photo=await (await fetch(i.photo)).blob();rec.push(i)}
+const t=db.transaction('inv','readwrite'),s=t.objectStore('inv');s.clear();rec.forEach(i=>s.put(i));await new Promise((a,b)=>{t.oncomplete=a;t.onerror=()=>b(t.error)});await load();alert('Restored.');go()}catch(x){alert('Invalid backup file. Nothing was changed.')}}
+function go(v){if(v){view=v;if(v!=='add')edit=null}$('#app').innerHTML={dash,add,hist,set,rep}[view]();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));scrollTo(0,0)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+$('#md').onclick=ev=>{if(ev.target.id==='md')cm()};
+const o=indexedDB.open('mess-manager',1);o.onupgradeneeded=()=>o.result.createObjectStore('inv',{keyPath:'id',autoIncrement:true});
+o.onsuccess=async()=>{db=o.result;await load();go();navigator.storage?.persist?.()};o.onerror=()=>alert('Storage unavailable. Do not use Private Browsing.');
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
