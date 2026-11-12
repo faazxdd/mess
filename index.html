@@ -5,37 +5,316 @@
 <meta name="theme-color" content="#291447"><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Mess Manager</title>
 <style>
-:root{--n:#0b1f3a;--g:#16a34a;--r:#dc2626;--bg:#f3f6fb;--b:#dbe3ef}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;max-width:100%;overflow-x:hidden}
-body{font:16px -apple-system,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--n);padding:env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom))}
-header{background:var(--n);color:#fff;padding:14px 16px;font-weight:700;font-size:20px}
-main{padding:14px;max-width:600px;margin:auto}
-.card{background:#fff;border-radius:16px;padding:14px;margin:0 0 12px;box-shadow:0 1px 4px #0b1f3a14}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.k{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.04em}.v{font-size:20px;font-weight:700;margin-top:2px;word-break:break-word}
-.pos{color:var(--g)}.neg{color:var(--r)}
-h3{margin:4px 0 10px;font-size:17px}
-input,select,textarea{width:100%;font:16px inherit;padding:13px;border:1px solid var(--b);border-radius:12px;background:#fff;color:var(--n);margin:4px 0 12px}
-label{font-size:13px;font-weight:600;color:#475569}
-button{font:600 16px inherit;border:0;border-radius:12px;padding:14px;background:var(--n);color:#fff;min-height:48px}
-button.big{width:100%;font-size:18px;background:var(--g);min-height:56px}
-button.alt{background:#e2e8f0;color:var(--n)}button.del{background:var(--r)}
-.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.row>*{min-width:0}
-.pay{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
-.pay label{display:block}.pay input{display:none}
-.pay span{display:block;text-align:center;padding:13px 4px;border:2px solid  var(--b);border-radius:12px;font-weight:700;color:var(--n)}
-.pay input:checked+span{background:var(--n);color:#fff;border-color:var(--n)}
-.bar{height:14px;background:#e2e8f0;border-radius:7px;overflow:hidden;margin:4px 0 10px}.bar i{display:block;height:100%;background:var(--n)}
-.cols{display:flex;align-items:flex-end;gap:6px;height:110px}.cols div{flex:1;text-align:center;font-size:10px}.cols i{display:block;background:var(--n);border-radius:6px 6px 0 0;min-height:2px}
-.inv{padding:12px 0;border-bottom:1px solid var(--b)}.inv:last-child{border:0}
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--b);padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;background:none;color:#64748b;font-size:11px;padding:8px 2px;min-height:56px}nav button.on{color:var(--n);font-weight:800}nav b{display:block;font-size:20px}
-#md{position:fixed;inset:0;background:#0b1f3acc;display:none;align-items:flex-end;z-index:9}
-#md>div{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
-img.rc{max-width:100%;border-radius:12px;margin:8px 0}.sm{font-size:13px;color:#64748b}
-.sc{padding:10px 12px;border-radius:12px;margin-bottom:10px;background:#f8fafc;border-left:5px solid}.neg2{border-color:var(--r)}.pos2{border-color:var(--g)}
-@media print{nav,header,.np{display:none!important}body{background:#fff;padding:0}}
+
+:root {
+  --n: #EDE5FF;
+  --g: #4ADE80;
+  --r: #FB7185;
+  --bg: #160D2B;
+  --b: #493365;
+  --surface: #291447;
+  --primary: #7138B8;
+  --accent: #B99AFF;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font: 16px -apple-system, Helvetica, Arial, sans-serif;
+  background: linear-gradient(145deg, #160D2B 0%, #21113D 45%, #321957 100%);
+  background-attachment: fixed;
+  color: var(--n);
+  padding: env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom));
+}
+
+header {
+  background: linear-gradient(110deg, #291447 0%, #55258E 55%, #8955D9 100%);
+  color: #fff;
+  padding: 17px 16px;
+  font-weight: 700;
+  font-size: 20px;
+  box-shadow: 0 4px 18px #0003;
+}
+
+main {
+  padding: 14px;
+  max-width: 600px;
+  margin: auto;
+}
+
+.card {
+  background: linear-gradient(145deg, #291447, #211137);
+  border: 1px solid #493365;
+  border-radius: 18px;
+  padding: 15px;
+  margin: 0 0 13px;
+  box-shadow: 0 5px 18px #0003;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.k {
+  font-size: 12px;
+  color: #C2A9E9;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.v {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 3px;
+  word-break: break-word;
+  color: #F5F0FF;
+}
+
+.pos { color: #4ADE80; }
+.neg { color: #FB7185; }
+
+h3 {
+  margin: 4px 0 12px;
+  font-size: 17px;
+  color: #E9D5FF;
+}
+
+input, select, textarea {
+  width: 100%;
+  font: 16px -apple-system, Helvetica, Arial, sans-serif;
+  padding: 13px;
+  border: 1px solid #594078;
+  border-radius: 12px;
+  background: #1C1030;
+  color: #F5F0FF;
+  margin: 4px 0 12px;
+  color-scheme: dark;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #A78BFA;
+  border-color: #A78BFA;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9D8BB5;
+}
+
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #D8C2F8;
+}
+
+button {
+  font: 600 16px -apple-system, Helvetica, Arial, sans-serif;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(120deg, #55258E, #8955D9);
+  color: #fff;
+  min-height: 48px;
+  box-shadow: 0 3px 10px #0002;
+}
+
+button:active {
+  transform: scale(.98);
+  opacity: .9;
+}
+
+button.big {
+  width: 100%;
+  font-size: 18px;
+  background: linear-gradient(110deg, #7138B8, #A477ED);
+  min-height: 56px;
+}
+
+button.alt {
+  background: #392451;
+  color: #E9D5FF;
+  border: 1px solid #594078;
+}
+
+button.del {
+  background: linear-gradient(110deg, #BE3455, #E05275);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.row > * { min-width: 0; }
+
+.pay {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.pay label { display: block; }
+.pay input { display: none; }
+
+.pay span {
+  display: block;
+  text-align: center;
+  padding: 13px 4px;
+  border: 1px solid #594078;
+  border-radius: 12px;
+  font-weight: 700;
+  color: #D8C2F8;
+  background: #211137;
+}
+
+.pay input:checked + span {
+  background: linear-gradient(120deg, #7138B8, #A477ED);
+  color: #fff;
+  border-color: #B99AFF;
+}
+
+.bar {
+  height: 14px;
+  background: #392451;
+  border-radius: 7px;
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #7138B8, #B99AFF);
+  border-radius: 7px;
+}
+
+.cols {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 110px;
+}
+
+.cols div {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  color: #D8C2F8;
+}
+
+.cols i {
+  display: block;
+  background: linear-gradient(180deg, #B99AFF, #7138B8);
+  border-radius: 6px 6px 0 0;
+  min-height: 2px;
+}
+
+.inv {
+  padding: 12px 0;
+  border-bottom: 1px solid #493365;
+}
+
+.inv:last-child { border: 0; }
+
+nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: linear-gradient(100deg, #1B1030, #291447);
+  border-top: 1px solid #493365;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -5px 20px #0004;
+  z-index: 5;
+}
+
+nav button {
+  flex: 1;
+  background: none;
+  box-shadow: none;
+  color: #A995C3;
+  font-size: 11px;
+  padding: 8px 2px;
+  min-height: 56px;
+}
+
+nav button.on {
+  color: #C4A5FF;
+  font-weight: 800;
+  background: #43207855;
+}
+
+nav b {
+  display: block;
+  font-size: 20px;
+}
+
+#md {
+  position: fixed;
+  inset: 0;
+  background: #10071BCC;
+  display: none;
+  align-items: flex-end;
+  z-index: 9;
+}
+
+#md > div {
+  background: linear-gradient(145deg, #291447, #160D2B);
+  border: 1px solid #493365;
+  color: #F5F0FF;
+  width: 100%;
+  max-height: 88vh;
+  overflow: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+}
+
+img.rc {
+  max-width: 100%;
+  border-radius: 12px;
+  margin: 8px 0;
+}
+
+.sm {
+  font-size: 13px;
+  color: #B9A5D2;
+}
+
+.sc {
+  padding: 10px 12px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: #291447;
+  border-left: 5px solid;
+}
+
+.neg2 { border-color: #FB7185; }
+.pos2 { border-color: #4ADE80; }
+
+@media print {
+  nav, header, .np { display: none !important; }
+  body {
+    background: #fff;
+    color: #111;
+    padding: 0;
+  }
+  .card { background: #fff; color: #111; }
+}
+
 </style></head><body>
 <header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
 <main id="app"></main><div id="md"><div id="mc"></div></div>
