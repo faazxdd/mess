@@ -140,7 +140,7 @@ function show(id){const i=all.find(x=>x.id===id);$('#mc').innerHTML=`<h3>${e(i.s
 const cm=()=>$('#md').style.display='none';
 const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)};
 async function del(id){if(!confirm('Delete this invoice permanently? Export a backup first if unsure.'))return;await rq(tx('readwrite').delete(id));await load();cm();go();toast('Invoice deleted')}
-function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">📤 Send to WhatsApp</button>`}
+function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">📄 Share PDF invoice</button>`}
 function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total expenses</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
 <div class="card"><h3>Everyone</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
 <div class="card"><h3>Settlement</h3>${settle(c)}</div>
