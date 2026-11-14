@@ -20,7 +20,7 @@ const shs=l=>{const sh=Array(M.length).fill(0),g={};l.forEach(i=>{const a=ids().
 function calc(l){const n=M.length,p=Array(n).fill(0);l.forEach(i=>p[i.payer]+=i.amt);
 const sh=shs(l),t=p.reduce((a,b)=>a+b,0),bal=p.map((x,i)=>x-sh[i]),d=[],c=[],tr=[];
 /* a member with a saved final settlement is treated as paid up for the invoices inside that settlement period */
-EX.filter(x=>x.type==='exit').forEach(x=>{const k=x.member,iv=l.filter(i=>i.payer===k||on(k,i.date)),S=iv.filter(i=>i.date>=x.from&&i.date<=x.date);if(!S.length)return;
+EX.filter(x=>x.type==='exit').forEach(x=>{const k=x.member,iv=l.filter(i=>i.payer===k||on(k,i.date)),S=iv.filter(i=>i.date>=(x.from||'0000-00-00')&&i.date<=x.date);if(!S.length)return;
 const a=S.length===iv.length?bal[k]:S.reduce((s,i)=>s+(i.payer===k?i.amt:0),0)-shs(S)[k];let r=Math.abs(a);
 bal.map((b,i)=>[i,b]).filter(([i,b])=>i!==k&&(a<0?b>0:b<0)).sort((u,v)=>Math.abs(v[1])-Math.abs(u[1])).forEach(([i,b])=>{const m=Math.min(r,Math.abs(b));bal[i]+=a<0?-m:m;r-=m});
 bal[k]+=a<0?Math.abs(a)-r:-(Math.abs(a)-r)});
@@ -40,7 +40,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>👥 Members</h3><button class="big" style="margin-bottom:12px" onclick="amem()">➕ Add new member</button>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}</div>`;
+const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v7</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -76,10 +76,6 @@ const _rs=rs;
 rs=async f=>{if(!f)return;let j={},ok=0;try{j=JSON.parse(await f.text())}catch{}
 const a=window.alert;window.alert=m=>{if(m==='Restored.')ok=1;a(m)};await _rs(f);window.alert=a;
 if(ok)await new Promise((y,n)=>{const t=xdb.transaction('ex','readwrite'),s=t.objectStore('ex');s.clear();(j.ex||[]).forEach(x=>s.put(x));t.oncomplete=y;t.onerror=n}),await xl()};
-
-/* ---- add new member (shares only expenses dated from the join date) ---- */
-function amem(){$('#mc').innerHTML=`<h3>Add member</h3><label>Name</label><input id="xnm" placeholder="e.g. RAHIM"><label>Joins on (shares expenses from this date)</label><input id="xjd" type="date" value="${today()}"><button class="big" onclick="asv()">Add member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
-async function asv(){const n=$('#xnm').value.trim().toUpperCase(),d=$('#xjd').value;if(!n||!d)return alert('Enter a name and joining date.');if(M.includes(n))return alert('That name already exists.');await rq(xs('readwrite').add({type:'join',member:M.length,name:n,date:d,ts:Date.now()}));await xl();cm();toast('Done ✓')}
 
 /* ---- add new member (shares only expenses from joining date) ---- */
 function amb(){$('#mc').innerHTML=`<h3>Add new member</h3><label>Name</label><input id="xnm" placeholder="e.g. RAFI"><label>Joining date</label><input id="xjd" type="date" value="${today()}"><p class="sm">They share only expenses dated from the joining date. Past invoices stay unchanged.</p><button class="big" onclick="asv()">Add member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
@@ -141,7 +137,7 @@ const AED=v=>'AED '+f(v),sgn=v=>(v<0?'- ':v>0?'+ ':'')+AED(Math.abs(v));
 const itemTbl=it=>it.length?{t:'tbl',cols:[{l:'#',w:.05},{l:'Date',w:.14},{l:'Shop',w:.25},{l:'Invoice no.',w:.13},{l:'Category',w:.16},{l:'Paid by',w:.12},{l:'Amount (AED)',w:.15,a:'r'}],rows:[...it.map((i,n)=>[String(n+1),fd(i.date),i.shop,i.no||'-',i.cat||'-',M[i.payer],f(i.amt)]),{c:['','','','','','Total',f(it.reduce((a,i)=>a+i.amt,0))],tot:1}]}:{t:'note',s:'No invoices.'};
 const byDate=l=>l.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
 function monthDoc(){const l=inM(mon),c=calc(l),it=byDate(l),act=ids().filter(k=>on(k,mon+'-31')||c.p[k]||c.sh[k]);
-const mn=new Date(mon+'-01T00:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}),ex=EX.filter(x=>x.type==='exit'&&x.from.slice(0,7)<=mon&&x.date.slice(0,7)>=mon);
+const mn=new Date(mon+'-01T00:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}),ex=EX.filter(x=>x.type==='exit'&&(x.from||x.date).slice(0,7)<=mon&&x.date.slice(0,7)>=mon);
 return{title:'SETTLEMENT INVOICE',no:'MM-'+mon.replace('-',''),s:[
 {t:'cards',a:[['Billing period',mn],['Invoices',String(c.n)],['Members',String(act.length)],['Currency','AED']]},
 {t:'cards',a:[['Total expenses',AED(c.t)],['Average share',AED(avg(c))],['Largest invoice',it.length?AED(Math.max(...it.map(i=>i.amt))):'-']]},

@@ -160,5 +160,5 @@ const o=indexedDB.open('mess-manager',1);o.onupgradeneeded=()=>o.result.createOb
 o.onsuccess=async()=>{db=o.result;await load();go();navigator.storage?.persist?.()};o.onerror=()=>alert('Storage unavailable. Do not use Private Browsing.');
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js"></script>
+<script src="exit.js?v=7"></script>
 </body></html>
