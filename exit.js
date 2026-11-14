@@ -17,7 +17,8 @@ const ld=k=>{const v=EX.filter(x=>x.member===k).pop();return v?v.date:''};
 
 /* ---- calc: each invoice is split equally among members active on ITS date ---- */
 /* who shares an invoice: the members ticked on that invoice (i.part); older invoices fall back to the date rule */
-const pt=(k,i)=>i.part?i.part.includes(k):on(k,i.date);
+const rpl=(k,d)=>EX.some(x=>x.type==='join'&&x.member===k&&x.date===d)&&EX.some(x=>x.type==='exit'&&x.date===d&&x.member!==k);
+const pt=(k,i)=>i.part?i.part.includes(k):(on(k,i.date)&&!rpl(k,i.date));
 /* default tick-list for a NEW invoice on date d: active that day, and NOT a member who has left on/before that day */
 const dpart=d=>ids().filter(k=>{if(!on(k,d))return false;const x=st(k);return !(x&&d>=x[0])});
 const shs=l=>{const sh=Array(M.length).fill(0),g={};l.forEach(i=>{const a=ids().filter(k=>pt(k,i));(g[a]=g[a]||{a,t:0}).t+=i.amt});Object.values(g).forEach(({a,t})=>{if(!a.length)return;const b=Math.floor(t/a.length),r=t%a.length;a.forEach((k,j)=>sh[k]+=b+(j<r?1:0))});return sh};
@@ -33,7 +34,7 @@ while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);cons
 return{p,t,sh,bal,tr,n:l.length}}
 
 /* ---- keep existing screens, fix "equal share" / member count ---- */
-const avg=c=>{const a=c.sh.filter(x=>x>0);return a.length?a.reduce((x,y)=>x+y,0)/a.length:0};
+const avg=c=>{const n=ids().filter(k=>on(k,mon+'-31')).length;return n?c.t/n:0};
 const fx=(h,c)=>h.replace(/(qual share[^A]*?)AED [\d,.]+/g,(m,a)=>a+'AED '+f(avg(c))).replace('÷ 4','÷ active members').replace(/([Ee])qual share/g,(m,c)=>c==='E'?'Average share':'average share');
 const _d=dash,_s=set,_r=rep;
 dash=()=>{const c=calc(inM(mon));return bkc()+fx(_d(),c).replace(/(Members<\/div><div class="v">)4/,'$1'+ids().filter(k=>on(k,mon+'-31')).length)+ins(c)+mcard()};
@@ -44,7 +45,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v8</div></div>`;
+const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v9</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -100,11 +101,14 @@ const bkc=()=>{let t=0;try{t=+localStorage.getItem('lastBk')||0}catch{}const d=M
 return all.length&&(!t||d>=14)?`<div class="card np" style="border-color:#FB7185"><div class="row"><div><b>Back up your data</b><div class="sm">${t?'Last backup '+d+' days ago':'No backup yet'}</div></div><button onclick="bk()">Backup</button></div></div>`:''};
 
 /* ---- per-invoice "Split between" (fixes removed members being charged on new bills) ---- */
-const spb=sel=>`<label>Split between (who shares this bill)</label><div class="pay" id="spb">${ids().map(k=>`<label><input type="checkbox" name="sp" value="${k}" ${sel.includes(k)?'checked':''}><span>${e(M[k])}</span></label>`).join('')}</div>`;
+const avail=(d,o)=>{const b=dpart(d);if(o&&o.date===d)[o.payer,...(o.part||ids().filter(k=>pt(k,o)))].forEach(k=>{if(k>=0&&k<M.length&&!b.includes(k))b.push(k)});return b.sort((x,y)=>x-y)};
+const ppl=(a,p)=>a.map(k=>`<label><input type="radio" name="pp" value="${k}" ${p===k?'checked':''}><span>${e(M[k])}</span></label>`).join('');
+const spi=(a,sel)=>a.map(k=>`<label><input type="checkbox" name="sp" value="${k}" ${sel.includes(k)?'checked':''}><span>${e(M[k])}</span></label>`).join('');
+const spb=(a,sel)=>`<label>Split between (who shares this bill)</label><div class="pay" id="spb">${spi(a,sel)}</div>`;
 const _a=add;
-add=()=>{const o=edit?all.find(i=>i.id===edit):null,sel=o?ids().filter(k=>pt(k,o)):dpart(today());
-return _a().replace('<input id="dt" type="date"','<input id="dt" type="date" onchange="spd()"').replace('<label>Invoice photo',spb(sel)+'<label>Invoice photo')};
-function spd(){if(edit)return;const d=$('#dt').value;if(!d)return;const s=dpart(d);document.querySelectorAll('input[name=sp]').forEach(x=>x.checked=s.includes(+x.value))}
+add=()=>{const o=edit?all.find(i=>i.id===edit):null,d=o?o.date:today(),a=avail(d,o),sel=o?ids().filter(k=>pt(k,o)):dpart(d);
+return _a().replace(/<label>Paid by<\/label><div class="pay">[\s\S]*?<\/div>/,()=>'<label>Paid by</label><div class="pay" id="ppb">'+ppl(a,o?o.payer:-1)+'</div>').replace('<input id="dt" type="date"','<input id="dt" type="date" onchange="spd()"').replace('<label>Invoice photo',()=>spb(a,sel)+'<label>Invoice photo')};
+function spd(){const d=$('#dt').value;if(!d)return;const o=edit?all.find(i=>i.id===edit):null,cp=document.querySelector('input[name=pp]:checked'),cur=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value),a=avail(d,o),sel=edit?cur.filter(k=>a.includes(k)):dpart(d);$('#ppb').innerHTML=ppl(a,cp?+cp.value:-1);$('#spb').innerHTML=spi(a,sel)}
 save=async()=>{const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked'),sp=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value);
 if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an amount above 0, and who paid.');
 if(!sp.length)return alert('Select at least one member to split this bill between.');
