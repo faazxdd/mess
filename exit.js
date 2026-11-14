@@ -45,7 +45,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v9</div></div>`;
+const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v10</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -161,6 +161,7 @@ o.s.forEach(s=>{if(s.t==='cards')cards(s.a);else if(s.t==='banner')banner(s);els
 return P.finish((i,n)=>{P.line(L,806,R,806,'#D8C2F8',.6);P.text('Computer-generated statement  |  Mess Manager  |  '+fd(today()),L,822,8,{col:MU});P.text('Page '+i+' of '+n,R,822,8,{col:MU,al:'r'})})}
 const AED=v=>'AED '+f(v),sgn=v=>(v<0?'- ':v>0?'+ ':'')+AED(Math.abs(v));
 const itemTbl=it=>it.length?{t:'tbl',cols:[{l:'#',w:.05},{l:'Date',w:.14},{l:'Shop',w:.25},{l:'Invoice no.',w:.13},{l:'Category',w:.16},{l:'Paid by',w:.12},{l:'Amount (AED)',w:.15,a:'r'}],rows:[...it.map((i,n)=>[String(n+1),fd(i.date),i.shop,i.no||'-',i.cat||'-',M[i.payer],f(i.amt)]),{c:['','','','','','Total',f(it.reduce((a,i)=>a+i.amt,0))],tot:1}]}:{t:'note',s:'No invoices.'};
+const MU='#6B5B8A';
 const byDate=l=>l.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
 function monthDoc(){const l=inM(mon),c=calc(l),it=byDate(l),act=ids().filter(k=>on(k,mon+'-31')||c.p[k]||c.sh[k]);
 const mn=new Date(mon+'-01T00:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}),ex=EX.filter(x=>x.type==='exit'&&(x.from||x.date).slice(0,7)<=mon&&x.date.slice(0,7)>=mon);
