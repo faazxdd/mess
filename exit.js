@@ -4,8 +4,9 @@ let EX=[],XR=null,XP=null,xdb;
 const xo=indexedDB.open('mess-exit',1);
 xo.onupgradeneeded=()=>xo.result.createObjectStore('ex',{keyPath:'id',autoIncrement:true});
 const xs=m=>xdb.transaction('ex',m).objectStore('ex');
-const xl=async()=>{EX=(await rq(xs('readonly').getAll())).sort((a,b)=>a.ts-b.ts);M.length=4;EX.filter(x=>x.type==='join').forEach(x=>M[x.member]=x.name);go()};
+const xl=async()=>{EX=(await rq(xs('readonly').getAll())).sort((a,b)=>a.ts-b.ts);M.length=4;EX.filter(x=>x.type==='join'&&x.member>=0&&x.member<12).forEach(x=>M[x.member]=cn(x.name)||'MEMBER '+(x.member+1));go()};
 const ids=()=>M.map((_,i)=>i);
+const cn=n=>String(n??'').replace(/[<>&"'`\\]/g,'').trim().slice(0,30);
 xo.onsuccess=()=>{xdb=xo.result;xl()};
 
 /* ---- membership by date ---- */
@@ -21,7 +22,7 @@ const rpl=(k,d)=>EX.some(x=>x.type==='join'&&x.member===k&&x.date===d)&&EX.some(
 const pt=(k,i)=>i.part?i.part.includes(k):(on(k,i.date)&&!rpl(k,i.date));
 /* default tick-list for a NEW invoice on date d: active that day, and NOT a member who has left on/before that day */
 const dpart=d=>ids().filter(k=>{if(!on(k,d))return false;const x=st(k);return !(x&&d>=x[0])});
-const shs=l=>{const sh=Array(M.length).fill(0),g={};l.forEach(i=>{const a=ids().filter(k=>pt(k,i));(g[a]=g[a]||{a,t:0}).t+=i.amt});Object.values(g).forEach(({a,t})=>{if(!a.length)return;const b=Math.floor(t/a.length),r=t%a.length;a.forEach((k,j)=>sh[k]+=b+(j<r?1:0))});return sh};
+const shs=l=>{const sh=Array(M.length).fill(0);l.forEach(i=>{const a=ids().filter(k=>pt(k,i));if(!a.length)return;const n=a.length,b=Math.floor(i.amt/n),r=i.amt%n,o=(i.id||0)%n;a.forEach((k,j)=>sh[k]+=b+(((j-o+n)%n)<r?1:0))});return sh};
 function calc(l){const n=M.length,p=Array(n).fill(0);l.forEach(i=>p[i.payer]+=i.amt);
 const sh=shs(l),t=p.reduce((a,b)=>a+b,0),bal=p.map((x,i)=>x-sh[i]),d=[],c=[],tr=[];
 /* a member with a saved final settlement is treated as paid up for the invoices inside that settlement period */
@@ -34,22 +35,26 @@ while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);cons
 return{p,t,sh,bal,tr,n:l.length}}
 
 /* ---- keep existing screens, fix "equal share" / member count ---- */
-const avg=c=>{const n=ids().filter(k=>on(k,mon+'-31')).length;return n?c.t/n:0};
+const actv=()=>{const t=today(),e=t.startsWith(mon)?t:mon+'-31';return ids().filter(k=>on(k,e))};
+const mcount=c=>{const a=actv();return ids().filter(k=>c.sh[k]>0||c.p[k]>0||a.includes(k)).length};
+const avg=c=>{const n=ids().filter(k=>c.sh[k]>0).length||actv().length;return n?c.t/n:0};
 const fx=(h,c)=>h.replace(/(qual share[^A]*?)AED [\d,.]+/g,(m,a)=>a+'AED '+f(avg(c))).replace('÷ 4','÷ active members').replace(/([Ee])qual share/g,(m,c)=>c==='E'?'Average share':'average share');
 const _d=dash,_s=set,_r=rep;
-dash=()=>{const c=calc(inM(mon));return bkc()+fx(_d(),c).replace(/(Members<\/div><div class="v">)4/,'$1'+ids().filter(k=>on(k,mon+'-31')).length)+ins(c)+mcard()};
-set=()=>fx(_s(),calc(inM(mon)));
-rep=()=>fx(_r(),calc(inM(mon))).replace('<button style="width:100%;margin-bottom:8px" onclick="window.print()">','<button style="width:100%;margin-bottom:8px" onclick="shr()">📄 Share PDF invoice</button><button style="width:100%;margin-bottom:8px" onclick="window.print()">').replace('<div class="card np"><h3>Export',cats()+'<div class="card np"><h3>Export');
+dash=()=>{const c=calc(inM(mon));return bkc()+fx(_d(),c).replace(/(Members<\/div><div class="v">)4/,'$1'+mcount(c))+ins(c)+mcard()};
+set=()=>fx(_s(),calc(inM(mon)))+adjNote();
+rep=()=>fx(_r(),calc(inM(mon))).replace('<button style="width:100%;margin-bottom:8px" onclick="window.print()">','<button style="width:100%;margin-bottom:8px" onclick="shr()">📄 Share PDF invoice</button><button style="width:100%;margin-bottom:8px" onclick="window.print()">').replace('<div class="card np"><h3>Export',cats()+adjNote()+'<div class="card np"><h3>Export');
 const wa=s=>navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s);
 shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
+const adjNote=()=>{const l=EX.filter(x=>x.type==='exit'&&x.adj&&(x.from||x.date).slice(0,7)<=mon&&x.date.slice(0,7)>=mon);return l.length?`<div class="card"><div class="sm">ℹ️ ${l.map(x=>e(M[x.member])+' · previous balance AED '+f(Math.abs(x.adj))+' ('+(x.adj>0?'owed by member':'credit to member')+')').join('<br>')}<br>Included in the final settlement only, not redistributed among members above.</div></div>`:''};
+
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v10</div></div>`;
+const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v11</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
-$('#mc').innerHTML=`<h3>Remove ${M[k]}</h3><label>Last active date</label><input id="xd" type="date" value="${today()}"><label>Count expenses from</label><input id="xf" type="date" value="${d}"><label>Previous balance AED (+ owed by member, − credit/advance)</label><input id="xa" type="number" inputmode="decimal" step="0.01" value="0"><label>Notes (optional)</label><textarea id="xn" rows="2"></textarea><button class="big" onclick="xp(${k})">Calculate final settlement</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
+$('#mc').innerHTML=`<h3>Remove ${M[k]}</h3><label for="xd">Last active date</label><input id="xd" type="date" value="${today()}"><label for="xf">Count expenses from</label><input id="xf" type="date" value="${d}"><label for="xa">Previous balance AED (+ owed by member, − credit/advance)</label><input id="xa" type="number" inputmode="decimal" step="0.01" value="0"><label for="xn">Notes (optional)</label><textarea id="xn" rows="2"></textarea><button class="big" onclick="xp(${k})">Calculate final settlement</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
 function xp(k){const d=$('#xd').value,fr=$('#xf').value,a=Math.round(Number($('#xa').value||0)*100);
 if(!d||!fr||fr>d)return alert('Enter a valid last active date and start date.');
 if(d<ld(k)||!on(k,d))return alert('Date must be after the last exit/restore date.');
@@ -68,23 +73,33 @@ async function xsv(){await rq(xs('readwrite').add({...XP,type:'exit',ts:Date.now
 function xv(id){XR=EX.find(x=>x.id===id);$('#mc').innerHTML=xr(XR)+`<div class="grid"><button onclick="xpr()">🖨 Print</button><button onclick="xpdf()">📄 PDF Invoice</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
 const xt=r=>`🧾 Final Settlement — ${M[r.member]}\nPeriod: ${r.from} to ${r.date} (${r.n} invoices)\nTotal mess expenses: AED ${f(r.total)}\n`+ids().filter(i=>r.p[i]||r.sh[i]).map(i=>`${M[i]}: paid AED ${f(r.p[i])} · share AED ${f(r.sh[i])}`).join('\n')+`\nPrevious balance: AED ${f(r.adj)}\n\n${M[r.member]} ${res(r)[0]}: AED ${f(Math.abs(r.fin))}`;
 const xwa=()=>wa(xt(XR));
-function xpr(){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.append(p)}p.innerHTML=xr(XR);print()}
-document.head.insertAdjacentHTML('beforeend','<style>#prt{display:none}@media print{body>*:not(#prt){display:none!important}#prt{display:block!important;color:#111;background:#fff;padding:16px}#prt *{color:#111!important;background:none!important}}</style>');
+function xpr(){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.append(p)}p.innerHTML=xr(XR);document.body.classList.add('px');print()}
+document.head.insertAdjacentHTML('beforeend','<style>#prt{display:none}@media print{body.px>*:not(#prt){display:none!important}body.px #prt{display:block!important;color:#111;background:#fff;padding:16px}body.px #prt *{color:#111!important;background:none!important}}</style>');
+addEventListener('afterprint',()=>{document.body.classList.remove('px');const p=$('#prt');if(p)p.innerHTML=''});
 
 /* ---- restore (history is never deleted) ---- */
-function rst(k){const x=st(k);$('#mc').innerHTML=`<h3>Restore ${M[k]}</h3><p class="sm">Left on ${x[0]}. All records are kept. They share only expenses dated from the restore date.</p><label>Active again from</label><input id="xrd" type="date" value="${today()}"><button class="big" onclick="rsv(${k})">Restore member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
+function rst(k){const x=st(k);$('#mc').innerHTML=`<h3>Restore ${M[k]}</h3><p class="sm">Left on ${x[0]}. All records are kept. They share only expenses dated from the restore date.</p><label for="xrd">Active again from</label><input id="xrd" type="date" value="${today()}"><button class="big" onclick="rsv(${k})">Restore member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
 async function rsv(k){const d=$('#xrd').value,x=st(k);if(!d||d<=x[0])return alert('Restore date must be after the exit date.');await rq(xs('readwrite').add({type:'restore',member:k,date:d,ts:Date.now()}));await xl();cm();toast('Done ✓')}
 
 /* ---- backup/restore also carries exit records ---- */
 bk=async()=>{const o=[];for(const i of all){const x={...i};if(i.photo)x.photo=await rd(i.photo);o.push(x)}dl(new Blob([JSON.stringify({app:'mess-manager',v:1,data:o,ex:EX})],{type:'application/json'}),'mess-backup-'+today()+'.json');try{localStorage.setItem('lastBk',Date.now())}catch{}};
-const _rs=rs;
-rs=async f=>{if(!f)return;let j={},ok=0;try{j=JSON.parse(await f.text())}catch{}
-const a=window.alert;window.alert=m=>{if(m==='Restored.')ok=1;a(m)};await _rs(f);window.alert=a;
-if(ok)await new Promise((y,n)=>{const t=xdb.transaction('ex','readwrite'),s=t.objectStore('ex');s.clear();(j.ex||[]).forEach(x=>s.put(x));t.oncomplete=y;t.onerror=n}),await xl()};
+const vd=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v),vi=(v,lo,hi)=>Number.isInteger(v)&&v>=lo&&v<=hi,nm=v=>Number.isFinite(v),na=v=>Array.isArray(v)&&v.length<=12&&v.every(nm);
+const okInv=i=>i&&typeof i==='object'&&vd(i.date)&&vi(i.amt,1,1e11)&&vi(i.payer,0,11)&&(i.id===undefined||vi(i.id,1,1e12))&&(i.part===undefined||(Array.isArray(i.part)&&i.part.every(k=>vi(k,0,11))));
+const okEx=x=>x&&typeof x==='object'&&['join','restore','exit'].includes(x.type)&&vi(x.member,0,11)&&vd(x.date)&&(x.id===undefined||vi(x.id,1,1e12))&&(x.type!=='join'||typeof x.name==='string')&&(x.type!=='exit'||(vd(x.from)&&nm(x.total)&&nm(x.paid)&&nm(x.share)&&nm(x.fin)&&nm(x.adj)&&nm(x.n)&&na(x.sh)&&na(x.p)&&na(x.bal)&&Array.isArray(x.ids)));
+const tdone=t=>new Promise((a,b)=>{t.oncomplete=a;t.onerror=()=>b(t.error);t.onabort=()=>b(t.error)});
+rs=async f=>{if(!f)return;let j;try{j=JSON.parse(await f.text())}catch{}
+if(!j||j.app!=='mess-manager'||!Array.isArray(j.data)||!j.data.every(okInv)||(j.ex!==undefined&&(!Array.isArray(j.ex)||!j.ex.every(okEx))))return alert('Invalid backup file. Nothing was changed.');
+if(!confirm('Replace ALL current data with this backup ('+j.data.length+' invoices)? Download a backup first if unsure.'))return;
+try{const rec=[];for(const i0 of j.data){const i={...i0};for(const k of['shop','no','desc','notes','cat'])if(i[k]!=null)i[k]=String(i[k]);
+if(typeof i.photo==='string'&&/^data:image\//.test(i.photo))i.photo=await(await fetch(i.photo)).blob();else delete i.photo;rec.push(i)}
+const ex=(j.ex||[]).map(x=>x.type==='join'?{...x,name:cn(x.name)}:x);
+const t=db.transaction('inv','readwrite'),s1=t.objectStore('inv');s1.clear();rec.forEach(i=>s1.put(i));await tdone(t);
+const u=xdb.transaction('ex','readwrite'),s2=u.objectStore('ex');s2.clear();ex.forEach(x=>s2.put(x));await tdone(u);
+await load();await xl();alert('Restored.')}catch(x){alert('Restore failed. Please check the file and try again.')}};
 
 /* ---- add new member (shares only expenses from joining date) ---- */
-function amb(){$('#mc').innerHTML=`<h3>Add new member</h3><label>Name</label><input id="xnm" placeholder="e.g. RAFI"><label>Joining date</label><input id="xjd" type="date" value="${today()}"><p class="sm">They share only expenses dated from the joining date. Past invoices stay unchanged.</p><button class="big" onclick="asv()">Add member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
-async function asv(){const n=$('#xnm').value.trim().toUpperCase(),d=$('#xjd').value;
+function amb(){$('#mc').innerHTML=`<h3>Add new member</h3><label for="xnm">Name</label><input id="xnm" placeholder="e.g. RAFI"><label for="xjd">Joining date</label><input id="xjd" type="date" value="${today()}"><p class="sm">They share only expenses dated from the joining date. Past invoices stay unchanged.</p><button class="big" onclick="asv()">Add member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
+async function asv(){const n=cn($('#xnm').value).toUpperCase(),d=$('#xjd').value;
 if(!n||!d)return alert('Enter a name and joining date.');
 if(M.some(x=>x.toUpperCase()===n))return alert('That name already exists.');
 if(M.length>=12)return alert('Maximum 12 members.');
@@ -107,19 +122,23 @@ const spi=(a,sel)=>a.map(k=>`<label><input type="checkbox" name="sp" value="${k}
 const spb=(a,sel)=>`<label>Split between (who shares this bill)</label><div class="pay" id="spb">${spi(a,sel)}</div>`;
 const _a=add;
 add=()=>{const o=edit?all.find(i=>i.id===edit):null,d=o?o.date:today(),a=avail(d,o),sel=o?ids().filter(k=>pt(k,o)):dpart(d);
-return _a().replace(/<label>Paid by<\/label><div class="pay">[\s\S]*?<\/div>/,()=>'<label>Paid by</label><div class="pay" id="ppb">'+ppl(a,o?o.payer:-1)+'</div>').replace('<input id="dt" type="date"','<input id="dt" type="date" onchange="spd()"').replace('<label>Invoice photo',()=>spb(a,sel)+'<label>Invoice photo')};
+return _a().replace(/<label>Paid by<\/label><div class="pay">[\s\S]*?<\/div>/,()=>'<label>Paid by</label><div class="pay" id="ppb">'+ppl(a,o?o.payer:-1)+'</div>').replace('<input id="dt" type="date"','<input id="dt" type="date" onchange="spd()"').replace('<label for="ph">Invoice photo',()=>spb(a,sel)+'<label for="ph">Invoice photo')};
 function spd(){const d=$('#dt').value;if(!d)return;const o=edit?all.find(i=>i.id===edit):null,cp=document.querySelector('input[name=pp]:checked'),cur=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value),a=avail(d,o),sel=edit?cur.filter(k=>a.includes(k)):dpart(d);$('#ppb').innerHTML=ppl(a,cp?+cp.value:-1);$('#spb').innerHTML=spi(a,sel)}
 save=async()=>{const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked'),sp=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value);
 if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an amount above 0, and who paid.');
 if(!sp.length)return alert('Select at least one member to split this bill between.');
+if(edit&&!swarn(edit,'Editing it'))return;
 const o=edit?{...all.find(i=>i.id===edit)}:{};Object.assign(o,{date:g('dt'),shop:g('shop'),no:g('no'),desc:g('ds'),amt:a,payer:+p.value,notes:g('nt'),cat:$('#ct').value,part:sp});
 const fl=$('#ph').files[0];if(fl)o.photo=fl;
 try{await rq(tx('readwrite').put(o))}catch(x){return alert('Save failed: '+x)}
 edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go();toast('Invoice saved ✓')};
+const inSet=id=>EX.filter(x=>x.type==='exit'&&(x.ids||[]).includes(id));
+const swarn=(id,what)=>{const l=inSet(id);return !l.length||confirm('This invoice is part of a saved final settlement ('+l.map(x=>M[x.member]+' · '+x.date).join(', ')+'). '+what+' will NOT update that saved settlement. Continue?')};
+const _del=del;del=async id=>{if(!swarn(id,'Deleting it'))return;await _del(id)};
 const _sh=show;
 show=id=>{_sh(id);const i=all.find(x=>x.id===id);if(i)$('#mc').innerHTML=$('#mc').innerHTML.replace('<br>Notes:','<br>Split between: <b>'+ids().filter(k=>pt(k,i)).map(k=>e(M[k])).join(', ')+'</b><br>Notes:')};
 const _rem=rem;
-rem=k=>{_rem(k);$('#mc').innerHTML=$('#mc').innerHTML.replace('<label>Last active date</label>','<label>Last active date (he still shares bills dated up to and including this day)</label>')};
+rem=k=>{_rem(k);$('#mc').innerHTML=$('#mc').innerHTML.replace('<label for="xd">Last active date</label>','<label for="xd">Last active date (they still share bills dated up to and including this day)</label>')};
 
 /* ================= PDF invoices (no libraries, works offline) ================= */
 const HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,...Array(10).fill(556),278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
@@ -127,7 +146,7 @@ const BW=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,...Arr
 const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 function mkPdf(){const H=842,pg=[];let c='';
 const wd=(s,b)=>{const T=b?BW:HW;let w=0;for(const ch of String(s)){w+=T[ch.charCodeAt(0)-32]||556}return w/1000};
-const cl=s=>String(s??'').replace(/[–—]/g,'-').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[^\x20-\x7E\xA0-\xFF]/g,'?');
+const cl=s=>String(s??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[–—]/g,'-').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[^\x20-\x7E\xA0-\xFF]+/g,'?');
 const rgb=h=>[1,3,5].map(i=>(parseInt(h.slice(i,i+2),16)/255).toFixed(3)).join(' ');
 const P={wd,
 rect(x,y,w,h,fill){c+=`${rgb(fill)} rg ${x} ${H-y-h} ${w} ${h} re f\n`},

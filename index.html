@@ -30,9 +30,10 @@ button.del{background:linear-gradient(110deg,#BE3455,#E05275)}
 .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
 .row>*{min-width:0}
 .pay{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
-.pay label{display:block}.pay input{display:none}
+.pay label{display:block;position:relative}.pay input{position:absolute;opacity:0;width:1px;height:1px;margin:0;padding:0;border:0;pointer-events:none}
 .pay span{display:block;text-align:center;padding:13px 4px;border:1px solid #594078;border-radius:12px;font-weight:700;color:#D8C2F8;background:#211137}
 .pay input:checked+span{background:linear-gradient(120deg,#7138B8,#A477ED);color:#fff;border-color:#B99AFF}
+.pay input:focus-visible+span{outline:2px solid #A78BFA;outline-offset:2px}
 .bar{height:14px;background:#392451;border-radius:7px;overflow:hidden;margin:4px 0 10px}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,#7138B8,#B99AFF);border-radius:7px}
 .cols{display:flex;align-items:flex-end;gap:6px;height:110px}
@@ -49,7 +50,7 @@ img.rc{max-width:100%;border-radius:12px;margin:8px 0}
 .sm{font-size:13px;color:#B9A5D2}
 .sc{padding:10px 12px;border-radius:12px;margin-bottom:10px;background:#291447;border-left:5px solid}
 .neg2{border-color:#FB7185}.pos2{border-color:#4ADE80}
-@media print{nav,header,.np{display:none!important}body{background:#fff;color:#111;padding:0}.card{background:#fff;color:#111}}
+@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}nav,header,.np{display:none!important}body{background:#fff;color:#111;padding:0}.card{background:#fff;box-shadow:none;border-color:#ccc}.card,.card *{color:#111!important}.card .pos{color:#15803D!important}.card .neg{color:#B91C1C!important}.sc{background:#F3EEFB!important}.bar{background:#E5E0EF!important}}
 body{-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;letter-spacing:-.005em}
 header{letter-spacing:.01em}h3{font-weight:700;letter-spacing:-.01em}.v{font-weight:800;letter-spacing:-.02em}
 @keyframes up{from{opacity:0;transform:translateY(10px)}}
@@ -71,7 +72,7 @@ nav button.on svg{animation:pop .35s}
 <svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gw" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#dcd6f7"/></linearGradient><filter id="dsh" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity=".3"/></filter></defs></svg>
 <header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
 <main id="app"></main><div id="md"><div id="mc"></div></div>
-<div class="np" style="text-align:center;padding:0 14px 14px"><button class="alt" onclick="document.getElementById('introMusic').play()">🎵 Play Music</button></div>
+<div class="np" style="text-align:center;padding:0 14px 14px"><button class="alt" id="mb" onclick="tm()">🎵 Play Music</button></div>
 <audio id="introMusic" src="intro.mp3" preload="auto"></audio>
 <div id="toast"></div>
 <nav>
@@ -96,7 +97,7 @@ bal.forEach((x,i)=>x<0?d.push([i,-x]):x>0&&c.push([i,x]));
 while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);const m=Math.min(d[0][1],c[0][1]);tr.push({from:d[0][0],to:c[0][0],amt:m});d[0][1]-=m;c[0][1]-=m;if(!d[0][1])d.shift();if(!c[0][1])c.shift()}
 return{p,t,sh,bal,tr,n:l.length}}
 const inM=m=>all.filter(i=>i.date.startsWith(m));
-const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
+const mb=()=>`<div class="np"><label for="mo">Month</label><input id="mo" type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
 const bal=x=>x===0?'<span class="sm">Balanced ✅</span>':x<0?`<span class="neg">🔴 Owes · AED ${f(-x)}</span>`:`<span class="pos">🟢 Gets back · AED ${f(x)}</span>`;
 const settle=c=>{const by={};c.tr.forEach(x=>(by[x.from]=by[x.from]||[]).push(x));
 const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm">Pays to 👇</div>${l.map(x=>`<div class="row"><span>➡️ ${M[x.to]}</span><b>AED ${f(x.amt)}</b></div>`).join('')}</div>`}).join('');
@@ -112,15 +113,15 @@ return mb()+`<div class="grid"><div class="card"><div class="k">Total expenses</
 const CATS=['Groceries','Vegetables & Fruits','Meat & Fish','Cleaning','Gas & Utilities','Other'];
 function add(){const o=edit?all.find(i=>i.id===edit):{date:today(),payer:-1};
 return `<div class="card"><h3>${edit?'Edit':'New'} invoice</h3>
-<label>Purchase date</label><input id="dt" type="date" value="${o.date}">
-<label>Shop name</label><input id="shop" value="${e(o.shop)}" placeholder="e.g. Lulu Hypermarket">
-<label>Invoice number</label><input id="no" value="${e(o.no)}">
-<label>Description</label><input id="ds" value="${e(o.desc)}" placeholder="Groceries, cleaning...">
-<label>Category</label><select id="ct">${CATS.map(c=>`<option ${o.cat===c?'selected':''}>${c}</option>`).join('')}</select>
-<label>Amount (AED)</label><input id="amt" type="number" inputmode="decimal" step="0.01" min="0" value="${o.amt?(o.amt/100).toFixed(2):''}">
+<label for="dt">Purchase date</label><input id="dt" type="date" value="${o.date}">
+<label for="shop">Shop name</label><input id="shop" value="${e(o.shop)}" placeholder="e.g. Lulu Hypermarket">
+<label for="no">Invoice number</label><input id="no" value="${e(o.no)}">
+<label for="ds">Description</label><input id="ds" value="${e(o.desc)}" placeholder="Groceries, cleaning...">
+<label for="ct">Category</label><select id="ct">${CATS.map(c=>`<option ${o.cat===c?'selected':''}>${c}</option>`).join('')}</select>
+<label for="amt">Amount (AED)</label><input id="amt" type="number" inputmode="decimal" step="0.01" min="0" value="${o.amt?(o.amt/100).toFixed(2):''}">
 <label>Paid by</label><div class="pay">${M.map((n,i)=>`<label><input type="radio" name="pp" value="${i}" ${o.payer===i?'checked':''}><span>${n}</span></label>`).join('')}</div>
-<label>Invoice photo ${o.photo?'(saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*">
-<label>Notes (optional)</label><textarea id="nt" rows="2">${e(o.notes)}</textarea>
+<label for="ph">Invoice photo ${o.photo?'(saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*">
+<label for="nt">Notes (optional)</label><textarea id="nt" rows="2">${e(o.notes)}</textarea>
 <button class="big" onclick="save()">SAVE INVOICE</button>${edit?'<button class="alt" style="width:100%;margin-top:10px" onclick="edit=null;go()">Cancel edit</button>':''}</div>`}
 async function save(){const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked');
 if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an amount above 0, and who paid.');
@@ -129,22 +130,22 @@ const fl=$('#ph').files[0];if(fl)o.photo=fl;
 try{await rq(tx('readwrite').put(o))}catch(x){return alert('Save failed: '+x)}
 edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go();toast('Invoice saved ✓')}
 function hist(){let l=all.filter(i=>(!F.m||i.payer==F.m)&&(!F.mo||i.date.startsWith(F.mo))&&(!F.d||i.date===F.d)&&(!F.q||[i.shop,i.no,i.desc,i.notes].join(' ').toLowerCase().includes(F.q.toLowerCase())));
-return `<div class="card np"><input placeholder="🔍 Search shop, invoice, notes" value="${e(F.q)}" oninput="F.q=this.value;hl()">
-<select onchange="F.m=this.value;go()"><option value="">All members</option>${M.map((n,i)=>`<option value="${i}" ${F.m==i&&F.m!==''?'selected':''}>${n}</option>`).join('')}</select>
-<label>Month</label><input type="month" value="${F.mo}" onchange="F.mo=this.value;go()"><label>Exact date</label><input type="date" value="${F.d}" onchange="F.d=this.value;go()">
+return `<div class="card np"><input aria-label="Search invoices" placeholder="🔍 Search shop, invoice, notes" value="${e(F.q)}" oninput="F.q=this.value;hl()">
+<select aria-label="Filter by member" onchange="F.m=this.value;go()"><option value="">All members</option>${M.map((n,i)=>`<option value="${i}" ${F.m==i&&F.m!==''?'selected':''}>${n}</option>`).join('')}</select>
+<label for="fmo">Month</label><input id="fmo" type="month" value="${F.mo}" onchange="F.mo=this.value;go()"><label for="fdt">Exact date</label><input id="fdt" type="date" value="${F.d}" onchange="F.d=this.value;go()">
 <button class="alt" onclick="F={q:'',m:'',mo:'',d:''};go()">Clear filters</button></div><div class="card" id="hl">${hrows(l)}</div>`}
 const hrows=l=>l.length?`<div class="sm">${l.length} invoices · AED ${f(l.reduce((a,b)=>a+b.amt,0))}</div>`+l.map(i=>`<div class="inv" onclick="show(${i.id})"><div class="row"><b>${e(i.shop)}</b><b>AED ${f(i.amt)}</b></div><div class="sm">${i.date} · ${M[i.payer]}${i.cat?' · '+e(i.cat):''}${i.photo?' · 📷':''}</div></div>`).join(''):'<p class="sm">No invoices found.</p>';
 function hl(){const x=F;$('#hl').innerHTML=hrows(all.filter(i=>(!x.m||i.payer==x.m)&&(!x.mo||i.date.startsWith(x.mo))&&(!x.d||i.date===x.d)&&(!x.q||[i.shop,i.no,i.desc,i.notes].join(' ').toLowerCase().includes(x.q.toLowerCase()))))}
-function show(id){const i=all.find(x=>x.id===id);$('#mc').innerHTML=`<h3>${e(i.shop)}</h3><div class="v">AED ${f(i.amt)}</div><p>Date: ${i.date}<br>Paid by: <b>${M[i.payer]}</b><br>Invoice no: ${e(i.no)||'-'}<br>Description: ${e(i.desc)||'-'}<br>Notes: ${e(i.notes)||'-'}</p>${i.photo?`<img class="rc" src="${URL.createObjectURL(i.photo)}">`:''}
+function show(id){if(show.u)URL.revokeObjectURL(show.u);show.u=null;const i=all.find(x=>x.id===id);$('#mc').innerHTML=`<h3>${e(i.shop)}</h3><div class="v">AED ${f(i.amt)}</div><p>Date: ${i.date}<br>Paid by: <b>${M[i.payer]}</b><br>Invoice no: ${e(i.no)||'-'}<br>Description: ${e(i.desc)||'-'}<br>Notes: ${e(i.notes)||'-'}</p>${i.photo?`<img class="rc" src="${show.u=URL.createObjectURL(i.photo)}">`:''}
 <div class="grid"><button onclick="edit=${id};view='add';cm();go()">Edit</button><button class="del" onclick="del(${id})">Delete</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
-const cm=()=>$('#md').style.display='none';
+const cm=()=>{$('#md').style.display='none';if(show.u){URL.revokeObjectURL(show.u);show.u=null}};
 const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)};
 async function del(id){if(!confirm('Delete this invoice permanently? Export a backup first if unsure.'))return;await rq(tx('readwrite').delete(id));await load();cm();go();toast('Invoice deleted')}
 function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">📄 Share PDF invoice</button>`}
 function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total expenses</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
 <div class="card"><h3>Everyone</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
 <div class="card"><h3>Settlement</h3>${settle(c)}</div>
-<div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">🖨 Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label>Restore from backup</label><input type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
+<div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">🖨 Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label for="rf">Restore from backup</label><input id="rf" type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
 const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.append(a);a.click();a.remove()};
 const rd=b=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(b)});
 function csv(){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';dl(new Blob(['\ufeff'+['Date,Shop,Invoice No,Description,Amount AED,Paid By,Notes,Category',...all.map(i=>[i.date,q(i.shop),q(i.no),q(i.desc),(i.amt/100).toFixed(2),M[i.payer],q(i.notes),q(i.cat)].join(','))].join('\r\n')],{type:'text/csv'}),'mess-expenses.csv')}
@@ -156,9 +157,12 @@ const t=db.transaction('inv','readwrite'),s=t.objectStore('inv');s.clear();rec.f
 function go(v){if(v){view=v;if(v!=='add')edit=null}$('#app').innerHTML={dash,add,hist,set,rep}[view]();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));scrollTo(0,0)}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 $('#md').onclick=ev=>{if(ev.target.id==='md')cm()};
+function tm(){const a=$('#introMusic'),b=$('#mb');if(a.paused){Promise.resolve(a.play()).then(()=>{b.textContent='⏸ Pause Music'}).catch(()=>toast('Could not play music'))}else{a.pause();b.textContent='🎵 Play Music'}}
+$('#introMusic').onended=()=>{$('#mb').textContent='🎵 Play Music'};
+let T0=today();document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const n=today();if(n===T0)return;if(mon===T0.slice(0,7))mon=n.slice(0,7);T0=n;if(view!=='add'&&$('#md').style.display!=='flex')go()});
 const o=indexedDB.open('mess-manager',1);o.onupgradeneeded=()=>o.result.createObjectStore('inv',{keyPath:'id',autoIncrement:true});
 o.onsuccess=async()=>{db=o.result;await load();go();navigator.storage?.persist?.()};o.onerror=()=>alert('Storage unavailable. Do not use Private Browsing.');
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js?v=10"></script>
+<script src="exit.js?v=11"></script>
 </body></html>
