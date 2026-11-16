@@ -223,7 +223,9 @@ const tot=findTotal(L);return{text:t,dc,shop:findShop(t,L),no:findInvNo(L),amt:t
 const ymdIn=(t,v)=>{const d=v.replace(/-/g,'');return t.includes(d.slice(2))||t.includes(d.slice(6)+d.slice(4,6)+d.slice(2,4))};
 function pickDate(ps){const sc={},r1={};ps.forEach(p=>p.dc.forEach(d=>{sc[d.v]=(sc[d.v]||0)+d.w;r1[d.v]=(r1[d.v]??true)&&d.r1}));
 const all=ps.map(p=>p.text.replace(/[^0-9]/g,'')).join(' ');Object.keys(sc).forEach(v=>{if(ymdIn(all,v)){sc[v]+=2;r1[v]=false}});
-const k=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);return k.length?{v:k[0],suspect:r1[k[0]]}:{v:'',suspect:false}}
+const k=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);if(!k.length)return{v:'',suspect:false};let v=k[0];
+if(r1[v]){const y=v.slice(2,4),m=v.slice(5,7),re=new RegExp('(?<!\\d)'+y+m+'(\\d{2})(?!\\d)');for(const p of ps){const q=p.text.match(re);if(q&&q[1].endsWith(String(+v.slice(8)))&&okDate(+('20'+y),+m,+q[1])){v='20'+y+'-'+m+'-'+q[1];r1[v]=false;break}}}
+return{v,suspect:!!r1[v]}}
 function mergeParsed(ps){const pd=pickDate(ps),pick=f=>{for(const p of ps)if(p[f])return p[f];return ''};
 return{date:pd.v,suspect:pd.suspect,shop:pick('shop'),no:pick('no'),amt:pick('amt'),desc:pick('desc'),cat:pick('cat')}}
 /* image prep + OCR */
