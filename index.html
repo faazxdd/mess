@@ -8,8 +8,10 @@
 <style>
 :root{--n:#EDE5FF;--g:#4ADE80;--r:#FB7185;--bg:#160D2B;--b:#493365;--surface:#291447;--primary:#7138B8;--accent:#B99AFF}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;max-width:100%;overflow-x:hidden}
-body{font:16px 'Plus Jakarta Sans',-apple-system,Helvetica,Arial,sans-serif;background:linear-gradient(145deg,#160D2B 0%,#21113D 45%,#321957 100%);background-attachment:fixed;color:var(--n);padding:env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom))}
+html{background:#160D2B;margin:0;-webkit-text-size-adjust:100%}
+body{margin:0;max-width:100%;overflow-x:hidden;min-height:100vh;overscroll-behavior-y:auto}
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:#291447;z-index:30}
+body{font:16px 'Plus Jakarta Sans',-apple-system,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#160D2B 0%,#21113D 50%,#2A1650 100%);color:var(--n);padding:env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom))}
 header{background:linear-gradient(110deg,#291447 0%,#55258E 55%,#8955D9 100%);color:#fff;padding:17px 16px;font-weight:700;font-size:20px;box-shadow:0 4px 18px #0003}
 main{padding:14px;max-width:600px;margin:auto}
 .card{background:linear-gradient(145deg,#291447,#211137);border:1px solid #493365;border-radius:18px;padding:15px;margin:0 0 13px;box-shadow:0 5px 18px #0003}
@@ -40,7 +42,7 @@ button.del{background:linear-gradient(110deg,#BE3455,#E05275)}
 .cols i{display:block;background:linear-gradient(180deg,#B99AFF,#7138B8);border-radius:6px 6px 0 0;min-height:2px}
 .inv{padding:12px 0;border-bottom:1px solid #493365}.inv:last-child{border:0}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:linear-gradient(100deg,#1B1030,#291447);border-top:1px solid #493365;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -5px 20px #0004;z-index:5}
-nav button{flex:1;background:none;box-shadow:none;color:#A995C3;font-size:11px;padding:8px 2px;min-height:56px}
+nav button{flex:1;background:none;box-shadow:none;color:#A995C3;font-size:11px;padding:8px 2px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:0}
 nav button.on{color:#C4A5FF;font-weight:800;background:#43207855}
 nav b{display:block;font-size:20px}
 #md{position:fixed;inset:0;background:#10071BCC;display:none;align-items:flex-end;z-index:9}
@@ -49,6 +51,10 @@ img.rc{max-width:100%;border-radius:12px;margin:8px 0}
 .sm{font-size:13px;color:#B9A5D2}
 .sc{padding:10px 12px;border-radius:12px;margin-bottom:10px;background:#291447;border-left:5px solid}
 .neg2{border-color:#FB7185}.pos2{border-color:#4ADE80}
+button.mini{min-height:34px;padding:6px 14px;font-size:13px;border-radius:10px;box-shadow:none;white-space:nowrap}
+.tr{padding:10px 0 4px;border-top:1px solid #49336599}.pst{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+#md>div{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+button.big{min-height:52px}
 @media print{nav,header,.np{display:none!important}body{background:#fff;color:#111;padding:0}.card{background:#fff;color:#111}}
 body{-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;letter-spacing:-.005em}
 header{letter-spacing:.01em}h3{font-weight:700;letter-spacing:-.01em}.v{font-weight:800;letter-spacing:-.02em}
@@ -69,9 +75,9 @@ nav button.on svg{animation:pop .35s}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gw" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#dcd6f7"/></linearGradient><filter id="dsh" x="-2" y="-2" width="28" height="28" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-color="#000" flood-opacity=".3"/></filter></defs></svg>
-<header>💰 Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
+<header>Mess Manager <span class="sm" style="color:#9fb3d1;font-weight:400">AED</span></header>
 <main id="app"></main><div id="md"><div id="mc"></div></div>
-<div class="np" style="text-align:center;padding:0 14px 14px"><button class="alt" onclick="document.getElementById('introMusic').play()">🎵 Play Music</button></div>
+<div class="np" style="text-align:center;padding:0 14px 14px"><button class="alt" onclick="document.getElementById('introMusic').play()">Play Music</button></div>
 <audio id="introMusic" src="intro.mp3" preload="auto"></audio>
 <div id="toast"></div>
 <nav>
@@ -97,16 +103,16 @@ while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);cons
 return{p,t,sh,bal,tr,n:l.length}}
 const inM=m=>all.filter(i=>i.date.startsWith(m));
 const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
-const bal=x=>x===0?'<span class="sm">Balanced ✅</span>':x<0?`<span class="neg">🔴 Owes · AED ${f(-x)}</span>`:`<span class="pos">🟢 Gets back · AED ${f(x)}</span>`;
+const bal=x=>x===0?'<span class="sm">Balanced </span>':x<0?`<span class="neg">Owes · AED ${f(-x)}</span>`:`<span class="pos">Gets back · AED ${f(x)}</span>`;
 const pdx=x=>typeof EX!=='undefined'?EX.find(r=>r.type==='paid'&&r.mon===mon&&r.from===x.from&&r.to===x.to):null;
 const settle=c=>{const by={};c.tr.forEach(x=>(by[x.from]=by[x.from]||[]).push(x));
-const pst=x=>{const r=pdx(x);if(r&&r.amt===x.amt)return `<div class="row np" style="margin:2px 0 8px"><span class="pos">✅ Paid on ${r.date}</span><button class="alt" onclick="unpaid(${r.id})">Undo</button></div>`;
-return `<div class="row np" style="margin:2px 0 8px"><span class="sm">${r?'Earlier paid AED '+f(r.amt)+' · now changed':'Not paid yet'}</span><button onclick="mpaid(${x.from},${x.to},${x.amt})">Mark as paid</button></div>`};
+const pst=x=>{const r=pdx(x);if(r&&r.amt===x.amt)return `<div class="pst np"><span class="pos">Paid on ${r.date}</span><button class="mini alt" onclick="unpaid(${r.id})">Undo</button></div>`;
+return `<div class="pst np"><span class="sm">${r?'Earlier paid AED '+f(r.amt)+', amount changed':'Not paid yet'}</span><button class="mini" onclick="mpaid(${x.from},${x.to},${x.amt})">Mark as paid</button></div>`};
 const np=c.tr.filter(x=>{const r=pdx(x);return r&&r.amt===x.amt}).length;
-const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm">Pays to 👇</div>${l.map(x=>`<div class="row"><span>➡️ ${M[x.to]}</span><b>AED ${f(x.amt)}</b></div>${pst(x)}`).join('')}</div>`}).join('');
+const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm" style="margin:2px 0 6px">Needs to pay</div>${l.map(x=>`<div class="tr"><div class="row"><span><span class="sm">to</span> <b>${M[x.to]}</b></span><b>AED ${f(x.amt)}</b></div>${pst(x)}</div>`).join('')}</div>`}).join('');
 const get=c.bal.map((x,i)=>x>0?`<div class="sc pos2"><div class="row"><b>${M[i]}</b><b class="pos">AED ${f(x)}</b></div><div class="sm">Total to receive</div></div>`:'').join('');
-return c.tr.length?`<div class="sm np">${np} of ${c.tr.length} payments marked as paid</div><h3>🔴 Need to pay</h3>${pay}<h3>🟢 Will receive</h3>${get}`:'<p class="sm">All settled ✅ Nobody owes anyone.</p>'};
-function shr(){const c=calc(inM(mon));let s=`🧾 Mess ${mon}\nTotal expenses: AED ${f(c.t)}\nEqual share: AED ${f(c.t/4)}\n\n`;M.forEach((n,i)=>s+=`${n}: Paid AED ${f(c.p[i])}\n`);s+='\n';c.tr.forEach(t=>s+=`${M[t.from]} ➡️ ${M[t.to]}: AED ${f(t.amt)}\n`);navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s)}
+return c.tr.length?`<div class="sm np" style="margin-bottom:6px">${np} of ${c.tr.length} payments marked as paid</div><h3>Need to pay</h3>${pay}<h3>Will receive</h3>${get}`:'<p class="sm">All settled. Nobody owes anyone.</p>'};
+function shr(){const c=calc(inM(mon));let s=`Mess ${mon}\nTotal expenses: AED ${f(c.t)}\nEqual share: AED ${f(c.t/4)}\n\n`;M.forEach((n,i)=>s+=`${n}: Paid AED ${f(c.p[i])}\n`);s+='\n';c.tr.forEach(t=>s+=`${M[t.from]} → ${M[t.to]}: AED ${f(t.amt)}\n`);navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s)}
 function dash(){const c=calc(inM(mon)),mx=Math.max(...c.p,1);
 const ms=[...Array(6)].map((_,k)=>{const d=new Date(+mon.slice(0,4),+mon.slice(5)-6+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}),mt=ms.map(x=>calc(inM(x)).t),mm=Math.max(...mt,1);
 return mb()+`<div class="grid"><div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div></div><div class="card"><div class="k">Invoices</div><div class="v">${c.n}</div></div><div class="card"><div class="k">Equal share</div><div class="v">AED ${f(c.t/4)}</div></div><div class="card"><div class="k">Members</div><div class="v">4</div></div></div>
@@ -123,8 +129,8 @@ return `<div class="card"><h3>${edit?'Edit':'New'} invoice</h3>
 <label>Category</label><select id="ct">${CATS.map(c=>`<option ${o.cat===c?'selected':''}>${c}</option>`).join('')}</select>
 <label>Amount (AED)</label><input id="amt" type="number" inputmode="decimal" step="0.01" min="0" value="${o.amt?(o.amt/100).toFixed(2):''}">
 <label>Paid by</label><div class="pay">${M.map((n,i)=>`<label><input type="radio" name="pp" value="${i}" ${o.payer===i?'checked':''}><span>${n}</span></label>`).join('')}</div>
-<label>Invoice photo · 📷 Scan &amp; auto-fill (photo or PDF) ${o.photo?'(saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*,application/pdf" onchange="scan(this.files[0])"><div id="scst" class="sm" style="margin-top:6px"></div>
-<label>📎 Attach only (photo or PDF, no scan)</label><input id="ph2" type="file" accept="image/*,application/pdf">
+<label>Invoice photo · Scan &amp; auto-fill (photo or PDF) ${o.photo?'(saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*,application/pdf" onchange="scan(this.files[0])"><div id="scst" class="sm" style="margin-top:6px"></div>
+<label>Attach only (photo or PDF, no scan)</label><input id="ph2" type="file" accept="image/*,application/pdf">
 <label>Notes (optional)</label><textarea id="nt" rows="2">${e(o.notes)}</textarea>
 <button class="big" onclick="save()">SAVE INVOICE</button>${edit?'<button class="alt" style="width:100%;margin-top:10px" onclick="edit=null;go()">Cancel edit</button>':''}</div>`}
 async function save(){const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked');
@@ -132,24 +138,24 @@ if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an am
 const o=edit?{...all.find(i=>i.id===edit)}:{};Object.assign(o,{date:g('dt'),shop:g('shop'),no:g('no'),desc:g('ds'),amt:a,payer:+p.value,notes:g('nt'),cat:$('#ct').value});
 const fl=$('#ph').files[0]||$('#ph2').files[0];if(fl)o.photo=fl;
 try{await rq(tx('readwrite').put(o))}catch(x){return alert('Save failed: '+x)}
-edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go();toast('Invoice saved ✓')}
+edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go();toast('Invoice saved ')}
 function hist(){let l=all.filter(i=>(!F.m||i.payer==F.m)&&(!F.mo||i.date.startsWith(F.mo))&&(!F.d||i.date===F.d)&&(!F.q||[i.shop,i.no,i.desc,i.notes].join(' ').toLowerCase().includes(F.q.toLowerCase())));
-return `<div class="card np"><input placeholder="🔍 Search shop, invoice, notes" value="${e(F.q)}" oninput="F.q=this.value;hl()">
+return `<div class="card np"><input placeholder="Search shop, invoice, notes" value="${e(F.q)}" oninput="F.q=this.value;hl()">
 <select onchange="F.m=this.value;go()"><option value="">All members</option>${M.map((n,i)=>`<option value="${i}" ${F.m==i&&F.m!==''?'selected':''}>${n}</option>`).join('')}</select>
 <label>Month</label><input type="month" value="${F.mo}" onchange="F.mo=this.value;go()"><label>Exact date</label><input type="date" value="${F.d}" onchange="F.d=this.value;go()">
 <button class="alt" onclick="F={q:'',m:'',mo:'',d:''};go()">Clear filters</button></div><div class="card" id="hl">${hrows(l)}</div>`}
-const hrows=l=>l.length?`<div class="sm">${l.length} invoices · AED ${f(l.reduce((a,b)=>a+b.amt,0))}</div>`+l.map(i=>`<div class="inv" onclick="show(${i.id})"><div class="row"><b>${e(i.shop)}</b><b>AED ${f(i.amt)}</b></div><div class="sm">${i.date} · ${M[i.payer]}${i.cat?' · '+e(i.cat):''}${i.photo?' · 📷':''}</div></div>`).join(''):'<p class="sm">No invoices found.</p>';
+const hrows=l=>l.length?`<div class="sm">${l.length} invoices · AED ${f(l.reduce((a,b)=>a+b.amt,0))}</div>`+l.map(i=>`<div class="inv" onclick="show(${i.id})"><div class="row"><b>${e(i.shop)}</b><b>AED ${f(i.amt)}</b></div><div class="sm">${i.date} · ${M[i.payer]}${i.cat?' · '+e(i.cat):''}${i.photo?' · ':''}</div></div>`).join(''):'<p class="sm">No invoices found.</p>';
 function hl(){const x=F;$('#hl').innerHTML=hrows(all.filter(i=>(!x.m||i.payer==x.m)&&(!x.mo||i.date.startsWith(x.mo))&&(!x.d||i.date===x.d)&&(!x.q||[i.shop,i.no,i.desc,i.notes].join(' ').toLowerCase().includes(x.q.toLowerCase()))))}
 function show(id){const i=all.find(x=>x.id===id);$('#mc').innerHTML=`<h3>${e(i.shop)}</h3><div class="v">AED ${f(i.amt)}</div><p>Date: ${i.date}<br>Paid by: <b>${M[i.payer]}</b><br>Invoice no: ${e(i.no)||'-'}<br>Description: ${e(i.desc)||'-'}<br>Notes: ${e(i.notes)||'-'}</p>${i.photo?`<img class="rc" src="${URL.createObjectURL(i.photo)}">`:''}
 <div class="grid"><button onclick="edit=${id};view='add';cm();go()">Edit</button><button class="del" onclick="del(${id})">Delete</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
 const cm=()=>$('#md').style.display='none';
 const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)};
 async function del(id){if(!confirm('Delete this invoice permanently? Export a backup first if unsure.'))return;await rq(tx('readwrite').delete(id));await load();cm();go();toast('Invoice deleted')}
-function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">📄 Share PDF invoice</button>`}
+function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">Share PDF invoice</button>`}
 function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total expenses</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
 <div class="card"><h3>Everyone</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
 <div class="card"><h3>Settlement</h3>${settle(c)}</div>
-<div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">🖨 Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label>Restore from backup</label><input type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
+<div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label>Restore from backup</label><input type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
 const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.append(a);a.click();a.remove()};
 const rd=b=>new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result);x.readAsDataURL(b)});
 function csv(){const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';dl(new Blob(['\ufeff'+['Date,Shop,Invoice No,Description,Amount AED,Paid By,Notes,Category',...all.map(i=>[i.date,q(i.shop),q(i.no),q(i.desc),(i.amt/100).toFixed(2),M[i.payer],q(i.notes),q(i.cat)].join(','))].join('\r\n')],{type:'text/csv'}),'mess-expenses.csv')}
@@ -265,27 +271,27 @@ el.value=v;el.dataset.auto='1';el.style.boxShadow='0 0 0 2px #4ADE80';setTimeout
 function applyScan(d){const ok=[],miss=[];
 [['dt',d.date,'date'],['shop',d.shop,'shop'],['no',d.no,'invoice no'],['amt',d.amt,'amount'],['ds',d.desc,'items']].forEach(([id,v,n])=>(fillF(id,v)?ok:miss).push(n));
 const ct=$('#ct');if(d.cat&&ct&&!edit)ct.value=d.cat;
-let m=ok.length?'✅ Filled: '+ok.join(', ')+(miss.length?' · Not found: '+miss.join(', '):'')+'. Please check date, amount & invoice no before saving.':'⚠️ Could not read anything useful. Try a clearer, flatter photo, or fill manually.';
-if(ok.length){const dp=dupOf(($('#no')||{}).value,($('#dt')||{}).value,Math.round(Number(($('#amt')||{}).value||0)*100),($('#shop')||{}).value,edit);if(dp)m+=' ⚠️ DUPLICATE? Already saved: '+dp.shop+' · '+dp.date+' · AED '+f(dp.amt)}
+let m=ok.length?'Filled: '+ok.join(', ')+(miss.length?' · Not found: '+miss.join(', '):'')+'. Please check date, amount & invoice no before saving.':'Could not read anything useful. Try a clearer, flatter photo, or fill manually.';
+if(ok.length){const dp=dupOf(($('#no')||{}).value,($('#dt')||{}).value,Math.round(Number(($('#amt')||{}).value||0)*100),($('#shop')||{}).value,edit);if(dp)m+=' DUPLICATE? Already saved: '+dp.shop+' · '+dp.date+' · AED '+f(dp.amt)}
 SS(m)}
 async function scan(file){if(!file||scanning)return;scanning=1;let wk;
 try{let L;
-if(isPdf(file)){SS('📄 Reading PDF… (needs internet the first time)');const doc=await pdfDoc(file),t=await pdfText(doc);
+if(isPdf(file)){SS('Reading PDF… (needs internet the first time)');const doc=await pdfDoc(file),t=await pdfText(doc);
 if(t.replace(/\s/g,'').length>60){applyScan(mergeParsed([parseBill(t)]));return}
 const cv=await pdfCanvas(doc,2000);L={bm:cv,w:cv.width,h:cv.height}}
 SS('⏳ Loading scanner… (needs internet the first time)');await loadTess();
 if(!L)L=await loadBM(file);
 const box=paperBox(L),c1=stretched(L,box);
-let pass=1;wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')SS('🔍 Reading bill… pass '+pass+' · '+Math.round(m.progress*100)+'%')}});
-SS('🔍 Reading bill… pass 1 · 0%');
+let pass=1;wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')SS('Reading bill… pass '+pass+' · '+Math.round(m.progress*100)+'%')}});
+SS('Reading bill… pass 1 · 0%');
 await wk.setParameters({tessedit_pageseg_mode:'4',preserve_interword_spaces:'1'});
 const ps=[parseBill((await wk.recognize(c1)).data.text)];let d=mergeParsed(ps);
-if(!(d.date&&d.shop&&d.no&&d.amt)||d.suspect){pass=2;SS('🔍 Double-checking… pass 2 · 0%');await wk.setParameters({tessedit_pageseg_mode:'6'});ps.push(parseBill((await wk.recognize(adaptive(c1))).data.text));d=mergeParsed(ps)}
+if(!(d.date&&d.shop&&d.no&&d.amt)||d.suspect){pass=2;SS('Double-checking… pass 2 · 0%');await wk.setParameters({tessedit_pageseg_mode:'6'});ps.push(parseBill((await wk.recognize(adaptive(c1))).data.text));d=mergeParsed(ps)}
 applyScan(d)}
-catch(x){SS('⚠️ Scan failed'+(navigator.onLine?'. Try a clearer photo.':': internet needed for the first scan.')+' You can fill manually.')}
+catch(x){SS('Scan failed'+(navigator.onLine?'. Try a clearer photo.':': internet needed for the first scan.')+' You can fill manually.')}
 finally{try{await wk?.terminate()}catch(_){}scanning=0}}
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js?v=11"></script>
+<script src="exit.js?v=12"></script>
 </body></html>

@@ -39,13 +39,13 @@ const fx=(h,c)=>h.replace(/(qual share[^A]*?)AED [\d,.]+/g,(m,a)=>a+'AED '+f(avg
 const _d=dash,_s=set,_r=rep;
 dash=()=>{const c=calc(inM(mon));return bkc()+fx(_d(),c).replace(/(Members<\/div><div class="v">)4/,'$1'+ids().filter(k=>on(k,mon+'-31')).length)+ins(c)+mcard()};
 set=()=>fx(_s(),calc(inM(mon)));
-rep=()=>fx(_r(),calc(inM(mon))).replace('<button style="width:100%;margin-bottom:8px" onclick="window.print()">','<button style="width:100%;margin-bottom:8px" onclick="shr()">📄 Share PDF invoice</button><button style="width:100%;margin-bottom:8px" onclick="window.print()">').replace('<div class="card np"><h3>Export',cats()+'<div class="card np"><h3>Export');
+rep=()=>fx(_r(),calc(inM(mon))).replace('<button style="width:100%;margin-bottom:8px" onclick="window.print()">','<button style="width:100%;margin-bottom:8px" onclick="shr()">Share PDF invoice</button><button style="width:100%;margin-bottom:8px" onclick="window.print()">').replace('<div class="card np"><h3>Export',cats()+'<div class="card np"><h3>Export');
 const wa=s=>navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s);
 shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>👥 Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">➕ Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>🧾 ${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v11</div></div>`;
+const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v12</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -65,15 +65,15 @@ ${ids().filter(i=>r.p[i]||r.sh[i]).map(i=>`<div class="row inv"><span>${M[i]} ·
 <div class="row inv"><span>Previous balance</span><b>AED ${f(r.adj)}</b></div>
 <div class="sc ${r.fin<0?'neg2':'pos2'}"><div class="k">${s}</div><div class="v ${c}">AED ${f(Math.abs(r.fin))}</div></div>${r.notes?`<p class="sm">${e(r.notes)}</p>`:''}`};
 async function xsv(){await rq(xs('readwrite').add({...XP,type:'exit',ts:Date.now()}));await xl();cm();xv(EX.filter(x=>x.type==='exit').pop().id)}
-function xv(id){XR=EX.find(x=>x.id===id);$('#mc').innerHTML=xr(XR)+`<div class="grid"><button onclick="xpr()">🖨 Print</button><button onclick="xpdf()">📄 PDF Invoice</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
-const xt=r=>`🧾 Final Settlement — ${M[r.member]}\nPeriod: ${r.from} to ${r.date} (${r.n} invoices)\nTotal mess expenses: AED ${f(r.total)}\n`+ids().filter(i=>r.p[i]||r.sh[i]).map(i=>`${M[i]}: paid AED ${f(r.p[i])} · share AED ${f(r.sh[i])}`).join('\n')+`\nPrevious balance: AED ${f(r.adj)}\n\n${M[r.member]} ${res(r)[0]}: AED ${f(Math.abs(r.fin))}`;
+function xv(id){XR=EX.find(x=>x.id===id);$('#mc').innerHTML=xr(XR)+`<div class="grid"><button onclick="xpr()">Print</button><button onclick="xpdf()">PDF Invoice</button></div><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Close</button>`;$('#md').style.display='flex'}
+const xt=r=>`Final Settlement — ${M[r.member]}\nPeriod: ${r.from} to ${r.date} (${r.n} invoices)\nTotal mess expenses: AED ${f(r.total)}\n`+ids().filter(i=>r.p[i]||r.sh[i]).map(i=>`${M[i]}: paid AED ${f(r.p[i])} · share AED ${f(r.sh[i])}`).join('\n')+`\nPrevious balance: AED ${f(r.adj)}\n\n${M[r.member]} ${res(r)[0]}: AED ${f(Math.abs(r.fin))}`;
 const xwa=()=>wa(xt(XR));
 function xpr(){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.append(p)}p.innerHTML=xr(XR);print()}
 document.head.insertAdjacentHTML('beforeend','<style>#prt{display:none}@media print{body>*:not(#prt){display:none!important}#prt{display:block!important;color:#111;background:#fff;padding:16px}#prt *{color:#111!important;background:none!important}}</style>');
 
 /* ---- restore (history is never deleted) ---- */
 function rst(k){const x=st(k);$('#mc').innerHTML=`<h3>Restore ${M[k]}</h3><p class="sm">Left on ${x[0]}. All records are kept. They share only expenses dated from the restore date.</p><label>Active again from</label><input id="xrd" type="date" value="${today()}"><button class="big" onclick="rsv(${k})">Restore member</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
-async function rsv(k){const d=$('#xrd').value,x=st(k);if(!d||d<=x[0])return alert('Restore date must be after the exit date.');await rq(xs('readwrite').add({type:'restore',member:k,date:d,ts:Date.now()}));await xl();cm();toast('Done ✓')}
+async function rsv(k){const d=$('#xrd').value,x=st(k);if(!d||d<=x[0])return alert('Restore date must be after the exit date.');await rq(xs('readwrite').add({type:'restore',member:k,date:d,ts:Date.now()}));await xl();cm();toast('Done ')}
 
 /* ---- backup/restore also carries exit records ---- */
 bk=async()=>{const o=[];for(const i of all){const x={...i};if(i.photo)x.photo=await rd(i.photo);o.push(x)}await bout(new Blob([JSON.stringify({app:'mess-manager',v:1,data:o,ex:EX})],{type:'application/json'}),'mess-backup-'+today()+'.json')};
@@ -89,13 +89,13 @@ async function asv(){const n=$('#xnm').value.trim().toUpperCase(),d=$('#xjd').va
 if(!n||!d)return alert('Enter a name and joining date.');
 if(M.some(x=>x.toUpperCase()===n))return alert('That name already exists.');
 if(M.length>=12)return alert('Maximum 12 members.');
-await rq(xs('readwrite').add({type:'join',member:M.length,name:n,date:d,ts:Date.now()}));await xl();cm();toast('Done ✓')}
+await rq(xs('readwrite').add({type:'join',member:M.length,name:n,date:d,ts:Date.now()}));await xl();cm();toast('Done ')}
 
 /* ---- insights, category report, backup reminder ---- */
 const ins=c=>{const l=inM(mon);if(!l.length)return '';const d=new Date(+mon.slice(0,4),+mon.slice(5),0).getDate(),now=today(),dd=now.startsWith(mon)?+now.slice(8):d;
 const pm=new Date(+mon.slice(0,4),+mon.slice(5)-2,1),pk=pm.getFullYear()+'-'+String(pm.getMonth()+1).padStart(2,'0'),pt=calc(inM(pk)).t;
 const big=l.reduce((a,b)=>b.amt>a.amt?b:a),top=c.p.indexOf(Math.max(...c.p)),pc=pt?Math.round((c.t-pt)/pt*100):null;
-return `<div class="card"><h3>✨ Insights</h3><div class="row inv"><span>Daily average</span><b>AED ${f(c.t/dd)}</b></div><div class="row inv"><span>Biggest invoice</span><b>AED ${f(big.amt)} · ${e(big.shop)}</b></div><div class="row inv"><span>Top spender</span><b>${M[top]}</b></div>${pc===null?'':`<div class="row inv"><span>vs last month</span><b class="${pc>0?'neg':'pos'}">${pc>0?'▲':'▼'} ${Math.abs(pc)}%</b></div>`}</div>`};
+return `<div class="card"><h3>Insights</h3><div class="row inv"><span>Daily average</span><b>AED ${f(c.t/dd)}</b></div><div class="row inv"><span>Biggest invoice</span><b>AED ${f(big.amt)} · ${e(big.shop)}</b></div><div class="row inv"><span>Top spender</span><b>${M[top]}</b></div>${pc===null?'':`<div class="row inv"><span>vs last month</span><b class="${pc>0?'neg':'pos'}">${pc>0?'▲':'▼'} ${Math.abs(pc)}%</b></div>`}</div>`};
 const cats=()=>{const m={};inM(mon).forEach(i=>{const k=i.cat||'Uncategorised';m[k]=(m[k]||0)+i.amt});const a=Object.entries(m).sort((x,y)=>y[1]-x[1]),mx=a[0]?a[0][1]:1;
 return a.length?`<div class="card"><h3>By category</h3>${a.map(([k,v])=>`<div class="row"><b>${e(k)}</b><span>AED ${f(v)}</span></div><div class="bar"><i style="width:${v/mx*100}%"></i></div>`).join('')}</div>`:''};
 const bkc=()=>{let t=0;try{t=+localStorage.getItem('lastBk')||0}catch{}const d=Math.floor((Date.now()-t)/864e5);
@@ -113,11 +113,11 @@ function spd(){const d=$('#dt').value;if(!d)return;const o=edit?all.find(i=>i.id
 save=async()=>{const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked'),sp=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value);
 if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an amount above 0, and who paid.');
 if(!sp.length)return alert('Select at least one member to split this bill between.');
-const dp=dupOf(g('no'),g('dt'),a,g('shop'),edit);if(dp&&!confirm('⚠️ This looks like a duplicate of a saved invoice:\n'+dp.shop+' · '+dp.date+' · AED '+f(dp.amt)+(dp.no?' · #'+dp.no:'')+'\n\nSave anyway?'))return;
+const dp=dupOf(g('no'),g('dt'),a,g('shop'),edit);if(dp&&!confirm('This looks like a duplicate of a saved invoice:\n'+dp.shop+' · '+dp.date+' · AED '+f(dp.amt)+(dp.no?' · #'+dp.no:'')+'\n\nSave anyway?'))return;
 const o=edit?{...all.find(i=>i.id===edit)}:{};Object.assign(o,{date:g('dt'),shop:g('shop'),no:g('no'),desc:g('ds'),amt:a,payer:+p.value,notes:g('nt'),cat:$('#ct').value,part:sp});
 let fl=$('#ph').files[0]||$('#ph2').files[0];if(fl&&isPdf(fl)){try{fl=await pdfToBlob(fl)}catch(_){fl=null;alert('Could not make a preview of the PDF (internet needed once). The invoice will be saved without the attachment.')}}if(fl)o.photo=fl;
 try{await rq(tx('readwrite').put(o))}catch(x){return alert('Save failed: '+x)}
-edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go();toast('Invoice saved ✓')};
+edit=null;mon=o.date.slice(0,7);await load();view='hist';F={q:'',m:'',mo:mon,d:''};go();toast('Invoice saved ')};
 const _sh=show;
 show=id=>{_sh(id);const i=all.find(x=>x.id===id);if(i)$('#mc').innerHTML=$('#mc').innerHTML.replace('<br>Notes:','<br>Split between: <b>'+ids().filter(k=>pt(k,i)).map(k=>e(M[k])).join(', ')+'</b><br>Notes:')};
 const _rem=rem;
@@ -190,5 +190,5 @@ async function pdfOut(b,n){const fl=new File([b],n,{type:'application/pdf'});try
 const xpdf=()=>pdfOut(renderInv(finalDoc(XR)),'Final-Settlement-'+M[XR.member]+'-'+XR.date+'.pdf');
 
 /* ---- settlement: mark each payment as paid (stored with the member records, included in backups) ---- */
-async function mpaid(a,b,m){await rq(xs('readwrite').add({type:'paid',mon,from:a,to:b,amt:m,date:today(),ts:Date.now()}));await xl();toast('Marked as paid ✓')}
+async function mpaid(a,b,m){await rq(xs('readwrite').add({type:'paid',mon,from:a,to:b,amt:m,date:today(),ts:Date.now()}));await xl();toast('Marked as paid ')}
 async function unpaid(id){await rq(xs('readwrite').delete(id));await xl();toast('Payment mark removed')}
