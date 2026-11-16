@@ -159,7 +159,8 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v)
 $('#md').onclick=ev=>{if(ev.target.id==='md')cm()};
 const o=indexedDB.open('mess-manager',1);o.onupgradeneeded=()=>o.result.createObjectStore('inv',{keyPath:'id',autoIncrement:true});
 o.onsuccess=async()=>{db=o.result;await load();go();navigator.storage?.persist?.()};o.onerror=()=>alert('Storage unavailable. Do not use Private Browsing.');
-/* ===== Bill scanner (free, on-device OCR) v2 ===== */
+/* ===== Bill scanner (free, on-device OCR) v3 ===== */
+/* ===== Bill scanner (free, on-device OCR) ===== */
 const BRANDS=[[/amazon/i,'Amazon'],[/flipkart/i,'Flipkart'],[/\bnoon\b/i,'Noon'],[/lulu/i,'Lulu Hypermarket'],[/carrefour|majid al futtaim/i,'Carrefour'],[/spinneys/i,'Spinneys'],[/choithram/i,'Choithrams'],[/union\s*co-?op/i,'Union Coop'],[/al\s*maya/i,'Al Maya'],[/talabat/i,'Talabat'],[/nesto/i,'Nesto'],[/ramez/i,'Ramez'],[/waitrose/i,'Waitrose'],[/day\s*to\s*day/i,'Day to Day'],[/grandiose/i,'Grandiose'],[/bigbasket/i,'BigBasket'],[/ikea/i,'IKEA'],[/instashop/i,'InstaShop'],[/\bdewa\b/i,'DEWA']];
 const MONS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 const pad2=n=>String(n).padStart(2,'0');
@@ -179,15 +180,17 @@ const AMT=/(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)\s?[.,)]\s?(\d{2})(?!\d)/g;
 const nums=s=>[...s.matchAll(AMT)].map(m=>parseFloat(m[1].replace(/,/g,'')+'.'+m[2]));
 const near=(a,b)=>Math.abs(a-b)<=.02;
 function vatTotal(L){let best=null;for(const l of L){const n=nums(l);for(let i=0;i+1<n.length;i++){const a=n[i],b=n[i+1];if(a>b&&b>0&&Math.abs(b-a*.05)<=.02+a*.002){const t=a+b;if(best==null||t>best)best=t}}}return best}
+function fixVat(T,A){let b=null;for(const x of A)if(x>T+.005&&(near(T,x*.05/1.05)||near(T,x/1.05))&&(b==null||x>b))b=x;return b==null?T:b}
 function findTotal(L){
 const strong=/grand\s*total|total\s*(incl\w*|with)\s*(vat|tax)|incl\w*\s*vat|total\s*(amount\s*)?(due|payable|paid)|amount\s*(due|payable)|net\s*(amount|total|payable)|balance\s*due|to\s*pay|order\s*total|invoice\s*total|total\s*amount|total\s*aed/i,bad=/sub\s*-?\s*total|excl/i;
+const A=[];L.forEach(l=>A.push(...nums(l)));
 const sc=[];L.forEach((l,i)=>{if(strong.test(l)&&!bad.test(l)){let n=nums(l);for(let k=1;!n.length&&k<=2&&L[i+k];k++)n=nums(L[i+k]);if(n.length)sc.push(n[n.length-1])}});
-const vt=vatTotal(L);
-if(sc.length){if(vt!=null&&sc.some(x=>near(x,vt)))return vt;const cnt={};sc.forEach(x=>cnt[x.toFixed(2)]=(cnt[x.toFixed(2)]||0)+1);return +Object.keys(cnt).sort((p,q)=>cnt[q]-cnt[p]||q-p)[0]}
-if(vt!=null)return vt;
-const c=[];L.forEach(l=>{if(/\btotal\b/i.test(l)&&!/sub\s*-?\s*total|vat|tax|discount|saving|items|qty|quantity|change|cash|tender|points/i.test(l)){const n=nums(l);if(n.length===1)c.push(n[0])}});
-if(c.length)return Math.max(...c);
-const d=[];L.forEach(l=>{if(!/cash|change|tender|card|paid|received|balance|vat|tax/i.test(l))d.push(...nums(l))});return d.length?Math.max(...d):null}
+const vt=vatTotal(L);let r=null;
+if(sc.length){if(vt!=null&&sc.some(x=>near(x,vt)))r=vt;else{const cnt={};sc.forEach(x=>cnt[x.toFixed(2)]=(cnt[x.toFixed(2)]||0)+1);r=+Object.keys(cnt).sort((p,q)=>cnt[q]-cnt[p]||q-p)[0]}}
+else if(vt!=null)r=vt;
+if(r==null){const c=[];L.forEach(l=>{if(/\btotal\b/i.test(l)&&!/sub\s*-?\s*total|vat|tax|discount|saving|items|qty|quantity|change|cash|tender|points/i.test(l)){const n=nums(l);if(n.length===1)c.push(n[0])}});if(c.length)r=Math.max(...c)}
+if(r==null){const f={};L.forEach(l=>{if(!/change|cash|received|balance|discount|saving|points|vat|tax|excl|%/i.test(l))nums(l).forEach(x=>f[x.toFixed(2)]=(f[x.toFixed(2)]||0)+1)});const k=Object.keys(f).map(Number),rep=k.filter(x=>f[x.toFixed(2)]>=2);const p=rep.length?rep:k;if(p.length)r=Math.max(...p)}
+return r==null?null:fixVat(r,A)}
 function findInvNo(L){
 const labs=[/tax\s*[il]nvoice\s*(?:no|number|num|#)/i,/[il]nvoice\s*(?:no|number|num|#|id)/i,/bill\s*(?:no|number|num|#|id)/i,/receipt\s*(?:no|number|num|#)/i,/(?:ref|reference|doc|document)\s*(?:no|number|num|#)/i,/order\s*(?:no|number|num|#|id)/i];
 for(const lab of labs)for(let i=0;i<L.length;i++){const m=lab.exec(L[i]);if(!m)continue;
