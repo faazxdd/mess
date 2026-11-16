@@ -98,10 +98,14 @@ return{p,t,sh,bal,tr,n:l.length}}
 const inM=m=>all.filter(i=>i.date.startsWith(m));
 const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
 const bal=x=>x===0?'<span class="sm">Balanced ✅</span>':x<0?`<span class="neg">🔴 Owes · AED ${f(-x)}</span>`:`<span class="pos">🟢 Gets back · AED ${f(x)}</span>`;
+const pdx=x=>typeof EX!=='undefined'?EX.find(r=>r.type==='paid'&&r.mon===mon&&r.from===x.from&&r.to===x.to):null;
 const settle=c=>{const by={};c.tr.forEach(x=>(by[x.from]=by[x.from]||[]).push(x));
-const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm">Pays to 👇</div>${l.map(x=>`<div class="row"><span>➡️ ${M[x.to]}</span><b>AED ${f(x.amt)}</b></div>`).join('')}</div>`}).join('');
+const pst=x=>{const r=pdx(x);if(r&&r.amt===x.amt)return `<div class="row np" style="margin:2px 0 8px"><span class="pos">✅ Paid on ${r.date}</span><button class="alt" onclick="unpaid(${r.id})">Undo</button></div>`;
+return `<div class="row np" style="margin:2px 0 8px"><span class="sm">${r?'Earlier paid AED '+f(r.amt)+' · now changed':'Not paid yet'}</span><button onclick="mpaid(${x.from},${x.to},${x.amt})">Mark as paid</button></div>`};
+const np=c.tr.filter(x=>{const r=pdx(x);return r&&r.amt===x.amt}).length;
+const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm">Pays to 👇</div>${l.map(x=>`<div class="row"><span>➡️ ${M[x.to]}</span><b>AED ${f(x.amt)}</b></div>${pst(x)}`).join('')}</div>`}).join('');
 const get=c.bal.map((x,i)=>x>0?`<div class="sc pos2"><div class="row"><b>${M[i]}</b><b class="pos">AED ${f(x)}</b></div><div class="sm">Total to receive</div></div>`:'').join('');
-return c.tr.length?`<h3>🔴 Need to pay</h3>${pay}<h3>🟢 Will receive</h3>${get}`:'<p class="sm">All settled ✅ Nobody owes anyone.</p>'};
+return c.tr.length?`<div class="sm np">${np} of ${c.tr.length} payments marked as paid</div><h3>🔴 Need to pay</h3>${pay}<h3>🟢 Will receive</h3>${get}`:'<p class="sm">All settled ✅ Nobody owes anyone.</p>'};
 function shr(){const c=calc(inM(mon));let s=`🧾 Mess ${mon}\nTotal expenses: AED ${f(c.t)}\nEqual share: AED ${f(c.t/4)}\n\n`;M.forEach((n,i)=>s+=`${n}: Paid AED ${f(c.p[i])}\n`);s+='\n';c.tr.forEach(t=>s+=`${M[t.from]} ➡️ ${M[t.to]}: AED ${f(t.amt)}\n`);navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s)}
 function dash(){const c=calc(inM(mon)),mx=Math.max(...c.p,1);
 const ms=[...Array(6)].map((_,k)=>{const d=new Date(+mon.slice(0,4),+mon.slice(5)-6+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}),mt=ms.map(x=>calc(inM(x)).t),mm=Math.max(...mt,1);
@@ -119,8 +123,8 @@ return `<div class="card"><h3>${edit?'Edit':'New'} invoice</h3>
 <label>Category</label><select id="ct">${CATS.map(c=>`<option ${o.cat===c?'selected':''}>${c}</option>`).join('')}</select>
 <label>Amount (AED)</label><input id="amt" type="number" inputmode="decimal" step="0.01" min="0" value="${o.amt?(o.amt/100).toFixed(2):''}">
 <label>Paid by</label><div class="pay">${M.map((n,i)=>`<label><input type="radio" name="pp" value="${i}" ${o.payer===i?'checked':''}><span>${n}</span></label>`).join('')}</div>
-<label>📷 Scan bill &amp; auto-fill ${o.photo?'(photo saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*" onchange="scan(this.files[0])"><div id="scst" class="sm" style="margin-top:6px"></div>
-<label>📎 Attach photo only (no scan)</label><input id="ph2" type="file" accept="image/*">
+<label>Invoice photo · 📷 Scan &amp; auto-fill (photo or PDF) ${o.photo?'(saved; choose to replace)':''}</label><input id="ph" type="file" accept="image/*,application/pdf" onchange="scan(this.files[0])"><div id="scst" class="sm" style="margin-top:6px"></div>
+<label>📎 Attach only (photo or PDF, no scan)</label><input id="ph2" type="file" accept="image/*,application/pdf">
 <label>Notes (optional)</label><textarea id="nt" rows="2">${e(o.notes)}</textarea>
 <button class="big" onclick="save()">SAVE INVOICE</button>${edit?'<button class="alt" style="width:100%;margin-top:10px" onclick="edit=null;go()">Cancel edit</button>':''}</div>`}
 async function save(){const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked');
@@ -223,6 +227,15 @@ const k=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);return k.length?{v:k[0],suspect
 function mergeParsed(ps){const pd=pickDate(ps),pick=f=>{for(const p of ps)if(p[f])return p[f];return ''};
 return{date:pd.v,suspect:pd.suspect,shop:pick('shop'),no:pick('no'),amt:pick('amt'),desc:pick('desc'),cat:pick('cat')}}
 /* image prep + OCR */
+function dupOf(no,date,amt,shop,skip){no=(no||'').trim().toLowerCase();const sh=(shop||'').trim().toLowerCase();return all.find(i=>i.id!==skip&&((no&&(i.no||'').trim().toLowerCase()===no)||(date&&amt>0&&i.date===date&&i.amt===amt&&(i.shop||'').trim().toLowerCase()===sh)))}
+const isPdf=f=>!!f&&(/pdf/i.test(f.type||'')||/\.pdf$/i.test(f.name||''));
+let pdfP;const loadPdf=()=>pdfP||(pdfP=new Promise((ok,no)=>{if(window.pdfjsLib)return ok();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';ok()};s.onerror=()=>{pdfP=null;no(new Error('pdf'))};document.head.appendChild(s)}));
+async function pdfDoc(file){await loadPdf();return pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise}
+async function pdfText(doc){let out='';const n=Math.min(doc.numPages,3);for(let p=1;p<=n;p++){const pg=await doc.getPage(p),tc=await pg.getTextContent(),rows=[];
+for(const it of tc.items){if(!it.str||!it.str.trim())continue;const y=it.transform[5],x=it.transform[4];let r=rows.find(r=>Math.abs(r.y-y)<3);if(!r){r={y,a:[]};rows.push(r)}r.a.push([x,it.str])}
+rows.sort((a,b)=>b.y-a.y).forEach(r=>{r.a.sort((a,b)=>a[0]-b[0]);out+=r.a.map(v=>v[1].trim()).join('  ')+'\n'});out+='\n'}return out}
+async function pdfCanvas(doc,max){const pg=await doc.getPage(1),v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(3,(max||2000)/Math.max(v0.width,v0.height))}),cv=document.createElement('canvas');cv.width=Math.round(v.width);cv.height=Math.round(v.height);const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);await pg.render({canvasContext:x,viewport:v}).promise;return cv}
+const pdfToBlob=async file=>{const doc=await pdfDoc(file),cv=await pdfCanvas(doc,1600);return await new Promise(r=>cv.toBlob(r,'image/jpeg',.85))};
 let tessP,scanning=0;
 const loadTess=()=>tessP||(tessP=new Promise((ok,no)=>{if(window.Tesseract)return ok();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>{tessP=null;no(new Error('load'))};document.head.appendChild(s)}));
 async function loadBM(file){let bm;try{bm=await createImageBitmap(file)}catch(_){bm=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)})}return{bm,w:bm.width||bm.naturalWidth,h:bm.height||bm.naturalHeight}}
@@ -247,23 +260,30 @@ const SS=t=>{const el=$('#scst');if(el)el.textContent=t};
 function fillF(id,v){const el=$('#'+id);if(!el||!v)return false;
 if(el.value&&el.dataset.auto!=='1'&&!(id==='dt'&&el.value===today()&&!edit))return false;
 el.value=v;el.dataset.auto='1';el.style.boxShadow='0 0 0 2px #4ADE80';setTimeout(()=>el.style.boxShadow='',5000);return true}
+function applyScan(d){const ok=[],miss=[];
+[['dt',d.date,'date'],['shop',d.shop,'shop'],['no',d.no,'invoice no'],['amt',d.amt,'amount'],['ds',d.desc,'items']].forEach(([id,v,n])=>(fillF(id,v)?ok:miss).push(n));
+const ct=$('#ct');if(d.cat&&ct&&!edit)ct.value=d.cat;
+let m=ok.length?'✅ Filled: '+ok.join(', ')+(miss.length?' · Not found: '+miss.join(', '):'')+'. Please check date, amount & invoice no before saving.':'⚠️ Could not read anything useful. Try a clearer, flatter photo, or fill manually.';
+if(ok.length){const dp=dupOf(($('#no')||{}).value,($('#dt')||{}).value,Math.round(Number(($('#amt')||{}).value||0)*100),($('#shop')||{}).value,edit);if(dp)m+=' ⚠️ DUPLICATE? Already saved: '+dp.shop+' · '+dp.date+' · AED '+f(dp.amt)}
+SS(m)}
 async function scan(file){if(!file||scanning)return;scanning=1;let wk;
-try{SS('⏳ Loading scanner… (needs internet the first time)');await loadTess();
-const L=await loadBM(file),box=paperBox(L),c1=stretched(L,box);
+try{let L;
+if(isPdf(file)){SS('📄 Reading PDF… (needs internet the first time)');const doc=await pdfDoc(file),t=await pdfText(doc);
+if(t.replace(/\s/g,'').length>60){applyScan(mergeParsed([parseBill(t)]));return}
+const cv=await pdfCanvas(doc,2000);L={bm:cv,w:cv.width,h:cv.height}}
+SS('⏳ Loading scanner… (needs internet the first time)');await loadTess();
+if(!L)L=await loadBM(file);
+const box=paperBox(L),c1=stretched(L,box);
 let pass=1;wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')SS('🔍 Reading bill… pass '+pass+' · '+Math.round(m.progress*100)+'%')}});
 SS('🔍 Reading bill… pass 1 · 0%');
 await wk.setParameters({tessedit_pageseg_mode:'4',preserve_interword_spaces:'1'});
 const ps=[parseBill((await wk.recognize(c1)).data.text)];let d=mergeParsed(ps);
 if(!(d.date&&d.shop&&d.no&&d.amt)||d.suspect){pass=2;SS('🔍 Double-checking… pass 2 · 0%');await wk.setParameters({tessedit_pageseg_mode:'6'});ps.push(parseBill((await wk.recognize(adaptive(c1))).data.text));d=mergeParsed(ps)}
-const ok=[],miss=[];
-[['dt',d.date,'date'],['shop',d.shop,'shop'],['no',d.no,'invoice no'],['amt',d.amt,'amount'],['ds',d.desc,'items']].forEach(([id,v,n])=>(fillF(id,v)?ok:miss).push(n));
-const ct=$('#ct');if(d.cat&&ct&&!edit)ct.value=d.cat;
-SS(ok.length?'✅ Filled: '+ok.join(', ')+(miss.length?' · Not found: '+miss.join(', '):'')+'. Please check date, amount & invoice no before saving.':'⚠️ Could not read anything useful. Try a clearer, flatter photo, or fill manually.')}
+applyScan(d)}
 catch(x){SS('⚠️ Scan failed'+(navigator.onLine?'. Try a clearer photo.':': internet needed for the first scan.')+' You can fill manually.')}
-try{await wk?.terminate()}catch(_){}
-scanning=0}
+finally{try{await wk?.terminate()}catch(_){}scanning=0}}
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js?v=10"></script>
+<script src="exit.js?v=11"></script>
 </body></html>
