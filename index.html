@@ -159,69 +159,105 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v)
 $('#md').onclick=ev=>{if(ev.target.id==='md')cm()};
 const o=indexedDB.open('mess-manager',1);o.onupgradeneeded=()=>o.result.createObjectStore('inv',{keyPath:'id',autoIncrement:true});
 o.onsuccess=async()=>{db=o.result;await load();go();navigator.storage?.persist?.()};o.onerror=()=>alert('Storage unavailable. Do not use Private Browsing.');
-/* ===== Bill scanner (free, on-device OCR) ===== */
+/* ===== Bill scanner (free, on-device OCR) v2 ===== */
 const BRANDS=[[/amazon/i,'Amazon'],[/flipkart/i,'Flipkart'],[/\bnoon\b/i,'Noon'],[/lulu/i,'Lulu Hypermarket'],[/carrefour|majid al futtaim/i,'Carrefour'],[/spinneys/i,'Spinneys'],[/choithram/i,'Choithrams'],[/union\s*co-?op/i,'Union Coop'],[/al\s*maya/i,'Al Maya'],[/talabat/i,'Talabat'],[/nesto/i,'Nesto'],[/ramez/i,'Ramez'],[/waitrose/i,'Waitrose'],[/day\s*to\s*day/i,'Day to Day'],[/grandiose/i,'Grandiose'],[/bigbasket/i,'BigBasket'],[/ikea/i,'IKEA'],[/instashop/i,'InstaShop'],[/\bdewa\b/i,'DEWA']];
 const MONS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
 const pad2=n=>String(n).padStart(2,'0');
 function okDate(y,m,d){if(y<100)y+=2000;if(m<1||m>12||d<1||d>31||y<2015)return null;const t=new Date(y,m-1,d);if(t.getMonth()!==m-1)return null;if(t>new Date(Date.now()+1728e5))return null;return y+'-'+pad2(m)+'-'+pad2(d)}
 function findDates(s){const r=[];let m,v;
 const a=/(?<!\d)(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})(?!\d)/g;
-while(m=a.exec(s)){v=okDate(+m[3],+m[2],+m[1]);if(!v&&+m[2]>12)v=okDate(+m[3],+m[1],+m[2]);if(v)r.push(v)}
+while(m=a.exec(s)){v=okDate(+m[3],+m[2],+m[1]);if(!v&&+m[2]>12)v=okDate(+m[3],+m[1],+m[2]);if(v)r.push({v,r1:m[1].length===1})}
 const b=/(?<!\d)(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?!\d)/g;
-while(m=b.exec(s)){v=okDate(+m[1],+m[2],+m[3]);if(v)r.push(v)}
+while(m=b.exec(s)){v=okDate(+m[1],+m[2],+m[3]);if(v)r.push({v,r1:false})}
 const c=/(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s\-,.]+([A-Za-z]{3,9})\.?[\s\-,.]+(\d{4}|\d{2})(?!\d)/g;
-while(m=c.exec(s)){const mo=MONS[m[2].slice(0,3).toLowerCase()];if(mo){v=okDate(+m[3],mo,+m[1]);if(v)r.push(v)}}
+while(m=c.exec(s)){const mo=MONS[m[2].slice(0,3).toLowerCase()];if(mo){v=okDate(+m[3],mo,+m[1]);if(v)r.push({v,r1:false})}}
 const d=/([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?!\d)/g;
-while(m=d.exec(s)){const mo=MONS[m[1].slice(0,3).toLowerCase()];if(mo){v=okDate(+m[3],mo,+m[2]);if(v)r.push(v)}}
+while(m=d.exec(s)){const mo=MONS[m[1].slice(0,3).toLowerCase()];if(mo){v=okDate(+m[3],mo,+m[2]);if(v)r.push({v,r1:false})}}
 return r}
-const AMT=/(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)\s?\.\s?(\d{2})(?!\d)/g;
+
+const AMT=/(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)\s?[.,)]\s?(\d{2})(?!\d)/g;
 const nums=s=>[...s.matchAll(AMT)].map(m=>parseFloat(m[1].replace(/,/g,'')+'.'+m[2]));
+const near=(a,b)=>Math.abs(a-b)<=.02;
+function vatTotal(L){let best=null;for(const l of L){const n=nums(l);for(let i=0;i+1<n.length;i++){const a=n[i],b=n[i+1];if(a>b&&b>0&&Math.abs(b-a*.05)<=.02+a*.002){const t=a+b;if(best==null||t>best)best=t}}}return best}
 function findTotal(L){
-const tiers=[[/grand\s*total/i,/sub\s*-?\s*total/i],[/(total\s*(amount\s*)?(due|payable|paid))|amount\s*(due|payable|paid)|net\s*(amount|total|payable)|balance\s*due|to\s*pay|order\s*total|invoice\s*total|total\s*amount|total\s*aed/i,/sub\s*-?\s*total/i],[/\btotal\b/i,/sub\s*-?\s*total|vat|tax|discount|saving|items|qty|quantity|change|cash|tender|points/i]];
-for(const [inc,exc] of tiers){const c=[];L.forEach((l,i)=>{if(inc.test(l)&&!exc.test(l)){let n=nums(l);if(!n.length&&L[i+1])n=nums(L[i+1]);if(n.length)c.push(n[n.length-1])}});if(c.length)return Math.max(...c)}
-const c=[];L.forEach(l=>{if(!/cash|change|tender|card|paid|received|balance/i.test(l))c.push(...nums(l))});return c.length?Math.max(...c):null}
-function findInvNo(t){
-const pats=[/(?:tax\s*)?invoice\s*(?:no|number|num|#|id)?\.?\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,24})/gi,/(?:bill|receipt|ref(?:erence)?|trn\s*no|doc(?:ument)?)\s*(?:no|number|num|#|id)?\.?\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,24})/gi,/order\s*(?:no|number|num|#|id)?\.?\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,24})/gi];
-for(const p of pats){let m;while(m=p.exec(t)){const v=m[1];p.lastIndex=m.index+1;if(/\d/.test(v)&&!/^(19|20)\d{2}$/.test(v)&&!/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(v))return v}}
-let m=t.match(/\b\d{3}-\d{7}-\d{7}\b/)||t.match(/\bOD\d{15,}\b/);return m?m[0]:''}
+const strong=/grand\s*total|total\s*(incl\w*|with)\s*(vat|tax)|incl\w*\s*vat|total\s*(amount\s*)?(due|payable|paid)|amount\s*(due|payable)|net\s*(amount|total|payable)|balance\s*due|to\s*pay|order\s*total|invoice\s*total|total\s*amount|total\s*aed/i,bad=/sub\s*-?\s*total|excl/i;
+const sc=[];L.forEach((l,i)=>{if(strong.test(l)&&!bad.test(l)){let n=nums(l);for(let k=1;!n.length&&k<=2&&L[i+k];k++)n=nums(L[i+k]);if(n.length)sc.push(n[n.length-1])}});
+const vt=vatTotal(L);
+if(sc.length){if(vt!=null&&sc.some(x=>near(x,vt)))return vt;const cnt={};sc.forEach(x=>cnt[x.toFixed(2)]=(cnt[x.toFixed(2)]||0)+1);return +Object.keys(cnt).sort((p,q)=>cnt[q]-cnt[p]||q-p)[0]}
+if(vt!=null)return vt;
+const c=[];L.forEach(l=>{if(/\btotal\b/i.test(l)&&!/sub\s*-?\s*total|vat|tax|discount|saving|items|qty|quantity|change|cash|tender|points/i.test(l)){const n=nums(l);if(n.length===1)c.push(n[0])}});
+if(c.length)return Math.max(...c);
+const d=[];L.forEach(l=>{if(!/cash|change|tender|card|paid|received|balance|vat|tax/i.test(l))d.push(...nums(l))});return d.length?Math.max(...d):null}
+function findInvNo(L){
+const labs=[/tax\s*[il]nvoice\s*(?:no|number|num|#)/i,/[il]nvoice\s*(?:no|number|num|#|id)/i,/bill\s*(?:no|number|num|#|id)/i,/receipt\s*(?:no|number|num|#)/i,/(?:ref|reference|doc|document)\s*(?:no|number|num|#)/i,/order\s*(?:no|number|num|#|id)/i];
+for(const lab of labs)for(let i=0;i<L.length;i++){const m=lab.exec(L[i]);if(!m)continue;
+let rest=L[i].slice(m.index+m[0].length).replace(/^[^A-Za-z0-9]+/,'');if(!/\d/.test(rest)&&L[i+1])rest=(rest+' '+L[i+1]).replace(/^[^A-Za-z0-9]+/,'');
+const tk=[];for(const w of rest.split(/\s+/)){if(/\d/.test(w)&&/^[A-Za-z0-9][A-Za-z0-9\-\/]*$/.test(w)&&tk.length<4)tk.push(w);else if(tk.length)break;else if(!/\d/.test(w)&&w.length<=3&&/^[A-Za-z]+$/.test(w))continue;else break}
+const v=tk.join('-').replace(/-+/g,'-');if(v.length>=4&&/\d/.test(v)&&!/^\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}$/.test(v)&&!/^(19|20)\d{2}$/.test(v))return v}
+const t=L.join('\n');let m=t.match(/\b\d{3}-\d{7}-\d{7}\b/)||t.match(/\bOD\d{15,}\b/);return m?m[0]:''}
+const WORDOK=w=>/^[A-Za-z][A-Za-z'&.-]{2,}$/.test(w)&&/[aeiouy]/i.test(w);
 function findShop(t,L){for(const [r,n] of BRANDS)if(r.test(t))return n;
-for(const l of L.slice(0,8)){const s=l.replace(/[^A-Za-z0-9 &'.\-]/g,' ').replace(/\s+/g,' ').trim(),al=(s.match(/[A-Za-z]/g)||[]).length;
-if(al>=3&&al/s.length>=.6&&s.length<=40&&!/invoice|receipt|tax|trn|tel|phone|mobile|date|bill|cashier|www|http|welcome|thank|duplicate|original|copy|customer|address|dubai|abu dhabi|sharjah|ajman|uae|p\.?o\.? box/i.test(s))return s===s.toUpperCase()?s.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()):s}return ''}
-function findItems(L){const out=[],bad=/total|vat|tax|change|cash|tender|discount|saving|balance|card|amount|round|visa|master|paid|points|qty|price|description|item\b|invoice|date|bill|tel|trn|www/i;
-for(const l of L){if(bad.test(l))continue;const m=l.match(/^[\s\d.xX*#:-]*([A-Za-z][A-Za-z0-9 &'\/().%,-]{2,45}?)\s+(?:[\d.,]+\s+){0,3}(\d+[.,]\d{2})\s*[A-Za-z]?\s*$/);
-if(m){const n=m[1].replace(/\s+/g,' ').trim();if(n.length>=3&&!out.includes(n))out.push(n)}if(out.length>=5)break}
+let lim=L.findIndex(l=>/\btrn\b|tax\s*[il]nvoice|\b[il]nvoice\b|vat\s*reg/i.test(l));lim=lim>0?Math.min(lim,10):8;
+let best='',bs=-1e9;L.slice(0,lim).forEach((l,i)=>{const s=l.replace(/[^A-Za-z0-9 &'.\-]/g,' ').replace(/\s+/g,' ').trim(),al=(s.match(/[A-Za-z]/g)||[]).length;
+if(!s||al/s.length<.6||/invoice|receipt|\btrn\b|\btel\b|phone|mobile|date|cashier|www|http|welcome|thank|duplicate|original|copy|customer|address|dubai|abu dhabi|sharjah|ajman|uae|p\.?o\.? box|near|opposite|road|street|tower|building|floor|shop\s*no/i.test(s))return;
+const good=s.split(' ').filter(WORDOK).length;if(!good)return;const sc=Math.min(good,4)*10-i*2;if(sc>bs){bs=sc;best=s}});
+if(!best)return '';if(best.split(' ').filter(WORDOK).length===1&&best.replace(/[^A-Za-z]/g,'').length<4)return '';
+best=best.replace(/^[^A-Za-z0-9]+|[\s\-.]+$/g,'');return best===best.toUpperCase()?best.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()):best}
+function findItems(L){const out=[],bad=/total|vat|tax|change|cash|tender|discount|saving|balance|card|amount|round|visa|master|paid|points|qty|price|description|item|invoice|date|bill|tel\b|trn|www|aed|other|xxxx|pcs|till|served|print|count|code|excl|incl|number/i;
+for(const l of L){if(bad.test(l))continue;const m=l.match(/^[\s\d.xX*#:-]*([A-Za-z][A-Za-z0-9 &'\/().%,-]{2,45}?)\s+(?:[\d.,)]+\s+){0,4}(\d+[.,]\s?\d{2})\s*[A-Za-z]?\s*$/);
+if(!m)continue;const n=m[1].replace(/\s+/g,' ').trim(),w=n.split(' ').filter(x=>WORDOK(x)&&x.length>=4);
+if(w.length&&(n.replace(/[^A-Za-z]/g,'').length/n.length)>=.6&&!out.includes(n))out.push(n);if(out.length>=5)break}
 return out}
-const CATMAP=[['Vegetables & Fruits',/vegetable|fruit|onion|tomato|potato|banana|apple|cucumber|carrot|lemon|garlic|coriander|spinach|capsicum|orange|grapes/gi],['Meat & Fish',/chicken|mutton|beef|lamb|fish|prawn|shrimp|meat|kingfish|salmon|sardine/gi],['Cleaning',/detergent|soap|cleaner|dettol|harpic|tissue|dishwash|sponge|bleach|garbage|freshener|comfort|ariel|tide|surf|mop|towel/gi],['Gas & Utilities',/\bgas\b|lpg|dewa|addc|sewa|etisalat|electricity|water bill|utility/gi],['Groceries',/rice|milk|\boil\b|sugar|flour|atta|\btea\b|coffee|bread|biscuit|juice|pasta|noodle|\bdal\b|lentil|salt|butter|cheese|yogh?urt|egg|cereal/gi]];
+const CATMAP=[['Vegetables & Fruits',/vegetable|fruit|onion|tomato|potato|banana|apple|cucumber|carrot|lemon|garlic|coriander|spinach|capsicum|orange|grapes/gi],['Meat & Fish',/chicken|mutton|beef|lamb|fish|prawn|shrimp|meat|kingfish|salmon|sardine/gi],['Cleaning',/detergent|soap|cleaner|dettol|harpic|tissue|dishwash|sponge|bleach|garbage|freshener|comfort|ariel|tide|surf|mop|towel/gi],['Gas & Utilities',/\bgas\b|lpg|dewa|addc|sewa|etisalat|electricity|water bill|utility/gi],['Groceries',/rice|milk|\boil\b|sugar|flour|atta|\btea\b|coffee|bread|biscuit|juice|pasta|noodle|\bdal\b|lentil|salt|butter|cheese|yogh?urt|egg|cereal|sunflo|mart|market|grocery|supermarket/gi]];
 function guessCat(t){let best='',n=0;for(const [c,r] of CATMAP){const k=(t.match(r)||[]).length;if(k>n){n=k;best=c}}return best}
-function parseBill(text){const t=text.replace(/\r/g,''),L=t.split('\n').map(s=>s.trim()).filter(Boolean);
-let date='';const dl=L.filter(l=>/date|dated|issued/i.test(l));for(const l of dl){const d=findDates(l);if(d.length){date=d[0];break}}
-if(!date){const d=findDates(t);if(d.length)date=d[0]}
-const tot=findTotal(L),items=findItems(L);
-return{date,shop:findShop(t,L),no:findInvNo(t),amt:tot!=null?tot.toFixed(2):'',desc:items.join(', ').slice(0,120),cat:guessCat(t)}}
+function parseBill(text){const t=text.replace(/\r/g,''),L=t.split('\n').map(s=>s.trim()).filter(Boolean),dc=[];
+L.forEach(l=>{const w=/date|dated|issued|till/i.test(l)?2:1;findDates(l).forEach(d=>dc.push({v:d.v,w,r1:d.r1}))});
+const tot=findTotal(L);return{text:t,dc,shop:findShop(t,L),no:findInvNo(L),amt:tot!=null?tot.toFixed(2):'',desc:findItems(L).join(', ').slice(0,120),cat:guessCat(t)}}
+const ymdIn=(t,v)=>{const d=v.replace(/-/g,'');return t.includes(d.slice(2))||t.includes(d.slice(6)+d.slice(4,6)+d.slice(2,4))};
+function pickDate(ps){const sc={},r1={};ps.forEach(p=>p.dc.forEach(d=>{sc[d.v]=(sc[d.v]||0)+d.w;r1[d.v]=(r1[d.v]??true)&&d.r1}));
+const all=ps.map(p=>p.text.replace(/[^0-9]/g,'')).join(' ');Object.keys(sc).forEach(v=>{if(ymdIn(all,v)){sc[v]+=2;r1[v]=false}});
+const k=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);return k.length?{v:k[0],suspect:r1[k[0]]}:{v:'',suspect:false}}
+function mergeParsed(ps){const pd=pickDate(ps),pick=f=>{for(const p of ps)if(p[f])return p[f];return ''};
+return{date:pd.v,suspect:pd.suspect,shop:pick('shop'),no:pick('no'),amt:pick('amt'),desc:pick('desc'),cat:pick('cat')}}
 /* image prep + OCR */
 let tessP,scanning=0;
 const loadTess=()=>tessP||(tessP=new Promise((ok,no)=>{if(window.Tesseract)return ok();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>{tessP=null;no(new Error('load'))};document.head.appendChild(s)}));
-async function prep(file){let bm;try{bm=await createImageBitmap(file)}catch(_){bm=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)})}
-const w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,sc=Math.max(.3,Math.min(2,2000/Math.max(w0,h0)));
-const cv=document.createElement('canvas');cv.width=Math.round(w0*sc);cv.height=Math.round(h0*sc);const x=cv.getContext('2d',{willReadFrequently:true});x.drawImage(bm,0,0,cv.width,cv.height);
+async function loadBM(file){let bm;try{bm=await createImageBitmap(file)}catch(_){bm=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)})}return{bm,w:bm.width||bm.naturalWidth,h:bm.height||bm.naturalHeight}}
+function grayOf(cv){const x=cv.getContext('2d',{willReadFrequently:true}),d=x.getImageData(0,0,cv.width,cv.height).data,g=new Uint8Array(cv.width*cv.height);for(let i=0,j=0;i<d.length;i+=4,j++)g[j]=(.299*d[i]+.587*d[i+1]+.114*d[i+2]+.5)|0;return g}
+function otsu(g){const h=new Array(256).fill(0);for(let i=0;i<g.length;i++)h[g[i]]++;const tot=g.length;let sum=0;for(let i=0;i<256;i++)sum+=i*h[i];let sB=0,wB=0,mx=0,th=127;for(let i=0;i<256;i++){wB+=h[i];if(!wB)continue;const wF=tot-wB;if(!wF)break;sB+=i*h[i];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>mx){mx=v;th=i}}return th}
+function paperBox(L){const s=Math.min(1,800/Math.max(L.w,L.h)),w=Math.round(L.w*s),h=Math.round(L.h*s),cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d',{willReadFrequently:true}).drawImage(L.bm,0,0,w,h);
+const g=grayOf(cv),t=otsu(g),rows=new Float32Array(h),cols=new Float32Array(w);for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(g[y*w+x]>t){rows[y]++;cols[x]++}
+let y0=-1,y1=-1,x0=-1,x1=-1;for(let y=0;y<h;y++)if(rows[y]/w>.15){if(y0<0)y0=y;y1=y}for(let x=0;x<w;x++)if(cols[x]/h>.15){if(x0<0)x0=x;x1=x}
+if(y0<0||x0<0)return null;const ar=(x1-x0)*(y1-y0)/(w*h);if(ar<.15||ar>.92)return null;const p=12;x0=Math.max(0,x0-p);y0=Math.max(0,y0-p);x1=Math.min(w,x1+p);y1=Math.min(h,y1+p);return{x:x0/s,y:y0/s,w:(x1-x0)/s,h:(y1-y0)/s}}
+function stretched(L,box){const sx=box?box.x:0,sy=box?box.y:0,sw=box?box.w:L.w,sh=box?box.h:L.h,sc=Math.max(.3,Math.min(2,2000/Math.max(sw,sh))),cv=document.createElement('canvas');cv.width=Math.round(sw*sc);cv.height=Math.round(sh*sc);
+const x=cv.getContext('2d',{willReadFrequently:true});x.drawImage(L.bm,sx,sy,sw,sh,0,0,cv.width,cv.height);
 const im=x.getImageData(0,0,cv.width,cv.height),d=im.data,h=new Array(256).fill(0);
-for(let i=0;i<d.length;i+=4){const g=Math.round(.299*d[i]+.587*d[i+1]+.114*d[i+2]);d[i]=g;h[g]++}
+for(let i=0;i<d.length;i+=4){const g=(.299*d[i]+.587*d[i+1]+.114*d[i+2]+.5)|0;d[i]=g;h[g]++}
 const tot=d.length/4;let lo=0,hi=255,a=0;while(lo<255&&(a+=h[lo])<tot*.02)lo++;a=0;while(hi>0&&(a+=h[hi])<tot*.02)hi--;const r=Math.max(hi-lo,40);
-for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,(d[i]-lo)*255/r));d[i]=d[i+1]=d[i+2]=v}
-x.putImageData(im,0,0);return cv}
+for(let i=0;i<d.length;i+=4){const v=Math.max(0,Math.min(255,(d[i]-lo)*255/r));d[i]=d[i+1]=d[i+2]=v}x.putImageData(im,0,0);return cv}
+function adaptive(cv,R=25,C=12){const W=cv.width,H=cv.height,x=cv.getContext('2d',{willReadFrequently:true}),im=x.getImageData(0,0,W,H),d=im.data,S=W+1,I=new Float64Array(S*(H+1));
+for(let y=0;y<H;y++){let row=0;for(let xx=0;xx<W;xx++){row+=d[(y*W+xx)*4];I[(y+1)*S+xx+1]=I[y*S+xx+1]+row}}
+const o=document.createElement('canvas');o.width=W;o.height=H;const ox=o.getContext('2d'),oi=ox.createImageData(W,H),od=oi.data;
+for(let y=0;y<H;y++){const ya=Math.max(0,y-R),yb=Math.min(H-1,y+R);for(let xx=0;xx<W;xx++){const xa=Math.max(0,xx-R),xb=Math.min(W-1,xx+R),ar=(xb-xa+1)*(yb-ya+1),m=(I[(yb+1)*S+xb+1]-I[ya*S+xb+1]-I[(yb+1)*S+xa]+I[ya*S+xa])/ar,v=d[(y*W+xx)*4]>m-C?255:0,k=(y*W+xx)*4;od[k]=od[k+1]=od[k+2]=v;od[k+3]=255}}
+ox.putImageData(oi,0,0);return o}
 const SS=t=>{const el=$('#scst');if(el)el.textContent=t};
 function fillF(id,v){const el=$('#'+id);if(!el||!v)return false;
 if(el.value&&el.dataset.auto!=='1'&&!(id==='dt'&&el.value===today()&&!edit))return false;
 el.value=v;el.dataset.auto='1';el.style.boxShadow='0 0 0 2px #4ADE80';setTimeout(()=>el.style.boxShadow='',5000);return true}
-async function scan(file){if(!file||scanning)return;scanning=1;
+async function scan(file){if(!file||scanning)return;scanning=1;let wk;
 try{SS('⏳ Loading scanner… (needs internet the first time)');await loadTess();
-const cv=await prep(file);SS('🔍 Reading bill… 0%');
-const r=await Tesseract.recognize(cv,'eng',{logger:m=>{if(m.status==='recognizing text')SS('🔍 Reading bill… '+Math.round(m.progress*100)+'%')}});
-const d=parseBill(r.data.text),ok=[],miss=[];
+const L=await loadBM(file),box=paperBox(L),c1=stretched(L,box);
+let pass=1;wk=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')SS('🔍 Reading bill… pass '+pass+' · '+Math.round(m.progress*100)+'%')}});
+SS('🔍 Reading bill… pass 1 · 0%');
+await wk.setParameters({tessedit_pageseg_mode:'4',preserve_interword_spaces:'1'});
+const ps=[parseBill((await wk.recognize(c1)).data.text)];let d=mergeParsed(ps);
+if(!(d.date&&d.shop&&d.no&&d.amt)||d.suspect){pass=2;SS('🔍 Double-checking… pass 2 · 0%');await wk.setParameters({tessedit_pageseg_mode:'6'});ps.push(parseBill((await wk.recognize(adaptive(c1))).data.text));d=mergeParsed(ps)}
+const ok=[],miss=[];
 [['dt',d.date,'date'],['shop',d.shop,'shop'],['no',d.no,'invoice no'],['amt',d.amt,'amount'],['ds',d.desc,'items']].forEach(([id,v,n])=>(fillF(id,v)?ok:miss).push(n));
-const ct=$('#ct');if(d.cat&&ct&&!edit){ct.value=d.cat}
-SS(ok.length?'✅ Filled: '+ok.join(', ')+(miss.length?' · Not found: '+miss.join(', '):'')+'. Please check before saving.':'⚠️ Could not read anything useful. Try a clearer, flatter photo, or fill manually.')}
+const ct=$('#ct');if(d.cat&&ct&&!edit)ct.value=d.cat;
+SS(ok.length?'✅ Filled: '+ok.join(', ')+(miss.length?' · Not found: '+miss.join(', '):'')+'. Please check date, amount & invoice no before saving.':'⚠️ Could not read anything useful. Try a clearer, flatter photo, or fill manually.')}
 catch(x){SS('⚠️ Scan failed'+(navigator.onLine?'. Try a clearer photo.':': internet needed for the first scan.')+' You can fill manually.')}
+try{await wk?.terminate()}catch(_){}
 scanning=0}
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
