@@ -21,6 +21,10 @@ main{padding:14px;max-width:600px;margin:auto}
 .pos{color:#4ADE80}.neg{color:#FB7185}
 h3{margin:4px 0 12px;font-size:17px;color:#E9D5FF}
 input,select,textarea{width:100%;font:16px 'Plus Jakarta Sans',-apple-system,Helvetica,Arial,sans-serif;padding:13px;border:1px solid #594078;border-radius:12px;background:#1C1030;color:#F5F0FF;margin:4px 0 12px;color-scheme:dark}
+input[type=date],input[type=month]{-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;min-width:0;min-height:50px;text-align:left;line-height:1.3;overflow:hidden}
+input[type=date]::-webkit-date-and-time-value,input[type=month]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.3em;display:block}
+input[type=date]::-webkit-datetime-edit,input[type=month]::-webkit-datetime-edit{padding:0}
+.card,.np,main{max-width:100%;min-width:0}
 input:focus,select:focus,textarea:focus{outline:2px solid #A78BFA;border-color:#A78BFA}
 input::placeholder,textarea::placeholder{color:#9D8BB5}
 label{font-size:13px;font-weight:600;color:#D8C2F8}
@@ -51,6 +55,9 @@ img.rc{max-width:100%;border-radius:12px;margin:8px 0}
 .sm{font-size:13px;color:#B9A5D2}
 .sc{padding:10px 12px;border-radius:12px;margin-bottom:10px;background:#291447;border-left:5px solid}
 .neg2{border-color:#FB7185}.pos2{border-color:#4ADE80}
+input[type=date],input[type=month]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;height:50px;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=month]::-webkit-date-and-time-value{text-align:left;min-height:1.4em;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator,input[type=month]::-webkit-calendar-picker-indicator{opacity:.8}
 button.mini{min-height:34px;padding:6px 14px;font-size:13px;border-radius:10px;box-shadow:none;white-space:nowrap}
 .tr{padding:10px 0 4px;border-top:1px solid #49336599}.pst{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 #md>div{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
