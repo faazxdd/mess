@@ -59,6 +59,9 @@ input[type=date],input[type=month]{-webkit-appearance:none;appearance:none;displ
 input[type=date]::-webkit-date-and-time-value,input[type=month]::-webkit-date-and-time-value{text-align:left;min-height:1.4em;margin:0}
 input[type=date]::-webkit-calendar-picker-indicator,input[type=month]::-webkit-calendar-picker-indicator{opacity:.8}
 button.mini{min-height:34px;padding:6px 14px;font-size:13px;border-radius:10px;box-shadow:none;white-space:nowrap}
+.jd{font-size:13px;font-weight:600;color:#D8C2F8;margin:3px 0 4px}.jd button.mini{padding:4px 12px;min-height:30px}
+.nb{flex:none;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:linear-gradient(110deg,#7138B8,#A477ED);color:#fff;white-space:nowrap}
+@media print{.jd{color:#333!important}.nb{background:#7138B8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 .tr{padding:10px 0 4px;border-top:1px solid #49336599}.pst{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 #md>div{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 button.big{min-height:52px}
@@ -109,6 +112,7 @@ bal.forEach((x,i)=>x<0?d.push([i,-x]):x>0&&c.push([i,x]));
 while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);const m=Math.min(d[0][1],c[0][1]);tr.push({from:d[0][0],to:c[0][0],amt:m});d[0][1]-=m;c[0][1]-=m;if(!d[0][1])d.shift();if(!c[0][1])c.shift()}
 return{p,t,sh,bal,tr,n:l.length}}
 const inM=m=>all.filter(i=>i.date.startsWith(m));
+function mh(i,n){return '<b>'+n+'</b>'} /* name row in Reports > Everyone; exit.js overrides it to add the joining date */
 const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
 const bal=x=>x===0?'<span class="sm">Balanced </span>':x<0?`<span class="neg">Owes · AED ${f(-x)}</span>`:`<span class="pos">Gets back · AED ${f(x)}</span>`;
 const pdx=x=>typeof EX!=='undefined'?EX.find(r=>r.type==='paid'&&r.mon===mon&&r.from===x.from&&r.to===x.to):null;
@@ -160,7 +164,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clea
 async function del(id){if(!confirm('Delete this invoice permanently? Export a backup first if unsure.'))return;await rq(tx('readwrite').delete(id));await load();cm();go();toast('Invoice deleted')}
 function set(){const c=calc(inM(mon));return mb()+`<div class="card"><div class="k">Total expenses</div><div class="v">AED ${f(c.t)}</div><div class="sm">Total ÷ 4 = equal share: AED ${f(c.t/4)}</div></div><div class="card"><h3>Who pays whom</h3>${settle(c)}</div><button class="big np" onclick="shr()">Share PDF invoice</button>`}
 function rep(){const c=calc(inM(mon));return mb()+`<div class="card"><h3>Report: ${mon}</h3><div class="row"><span>Total expenses</span><b>AED ${f(c.t)}</b></div><div class="row"><span>Invoices</span><b>${c.n}</b></div><div class="row"><span>Equal share</span><b>AED ${f(c.t/4)}</b></div></div>
-<div class="card"><h3>Everyone</h3>${M.map((n,i)=>`<div class="inv"><b>${n}</b><div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
+<div class="card"><h3>Everyone</h3>${M.map((n,i)=>`<div class="inv">${mh(i,n)}<div class="sm">Paid AED ${f(c.p[i])} · Share AED ${f(c.sh[i])}</div>${bal(c.bal[i])}</div>`).join('')}</div>
 <div class="card"><h3>Settlement</h3>${settle(c)}</div>
 <div class="card np"><h3>Export &amp; backup</h3><button style="width:100%;margin-bottom:8px" onclick="window.print()">Print report</button><button style="width:100%;margin-bottom:8px" onclick="csv()">Export all to CSV (Excel)</button><button style="width:100%;margin-bottom:8px" onclick="bk()">Download full JSON backup</button><label>Restore from backup</label><input type="file" accept=".json,application/json" onchange="rs(this.files[0])"></div>`}
 const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.append(a);a.click();a.remove()};
@@ -300,5 +304,5 @@ finally{try{await wk?.terminate()}catch(_){}scanning=0}}
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js?v=12"></script>
+<script src="exit.js?v=13"></script>
 </body></html>

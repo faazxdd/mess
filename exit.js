@@ -6,19 +6,23 @@ xo.onupgradeneeded=()=>xo.result.createObjectStore('ex',{keyPath:'id',autoIncrem
 const xs=m=>xdb.transaction('ex',m).objectStore('ex');
 const xl=async()=>{EX=(await rq(xs('readonly').getAll())).sort((a,b)=>a.ts-b.ts);M.length=4;EX.filter(x=>x.type==='join').forEach(x=>M[x.member]=x.name);go()};
 const ids=()=>M.map((_,i)=>i);
+/* ---- joining date: stored on the member's own record. Added members: 'join' record (member). Original 4 members: 'mjoin' record (mid), set in Reports > Everyone ---- */
+const jdt=k=>{const r=EX.find(r=>(r.type==='join'&&r.member===k)||(r.type==='mjoin'&&r.mid===k));return r?r.date:''};
+const MNM=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fjd=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?d.slice(8)+' '+MNM[+d.slice(5,7)-1]+' '+d.slice(0,4):'';
 xo.onsuccess=()=>{xdb=xo.result;xl()};
 
 /* ---- membership by date ---- */
 const END='9999-99-99';
 const rg=k=>{const r=[];EX.filter(x=>x.member===k).forEach(x=>{if(x.type==='join')r.push(['',x.date]);else if(x.type==='exit')r.push([x.date,END]);else if(r.length)r[r.length-1][1]=x.date});return r};
-const on=(k,d)=>!rg(k).some(([a,b])=>d>a&&d<b);   // active on date d (exit date itself is still active)
+const on=(k,d)=>(!jdt(k)||d>=jdt(k))&&!rg(k).some(([a,b])=>d>a&&d<b);   // active on date d (exit date itself is still active)
 const st=k=>{const r=rg(k).pop();return r&&r[1]===END?r:null};
 const ld=k=>{const v=EX.filter(x=>x.member===k).pop();return v?v.date:''};
 
 /* ---- calc: each invoice is split equally among members active on ITS date ---- */
 /* who shares an invoice: the members ticked on that invoice (i.part); older invoices fall back to the date rule */
 const rpl=(k,d)=>EX.some(x=>x.type==='join'&&x.member===k&&x.date===d)&&EX.some(x=>x.type==='exit'&&x.date===d&&x.member!==k);
-const pt=(k,i)=>i.part?i.part.includes(k):(on(k,i.date)&&!rpl(k,i.date));
+const pt=(k,i)=>(!jdt(k)||i.date>=jdt(k))&&(i.part?i.part.includes(k):(on(k,i.date)&&!rpl(k,i.date)));   // never shares an invoice dated before the member's joining date
 /* default tick-list for a NEW invoice on date d: active that day, and NOT a member who has left on/before that day */
 const dpart=d=>ids().filter(k=>{if(!on(k,d))return false;const x=st(k);return !(x&&d>=x[0])});
 const shs=l=>{const sh=Array(M.length).fill(0),g={};l.forEach(i=>{const a=ids().filter(k=>pt(k,i));(g[a]=g[a]||{a,t:0}).t+=i.amt});Object.values(g).forEach(({a,t})=>{if(!a.length)return;const b=Math.floor(t/a.length),r=t%a.length;a.forEach((k,j)=>sh[k]+=b+(j<r?1:0))});return sh};
@@ -45,7 +49,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v12</div></div>`;
+const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v13</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -90,6 +94,16 @@ if(!n||!d)return alert('Enter a name and joining date.');
 if(M.some(x=>x.toUpperCase()===n))return alert('That name already exists.');
 if(M.length>=12)return alert('Maximum 12 members.');
 await rq(xs('readwrite').add({type:'join',member:M.length,name:n,date:d,ts:Date.now()}));await xl();cm();toast('Done ')}
+
+/* ---- Reports > Everyone: joining date line + New Member badge ---- */
+mh=(k,n)=>{const d=jdt(k),nw=d&&d.slice(0,7)===mon;
+return `<div class="row"><b>${e(n)}</b>${nw?'<span class="nb">New Member</span>':''}</div><div class="row jd"><span>Joined: ${d?fjd(d):'Not set'}</span>${k<4?`<button class="mini alt np" onclick="sjd(${k})">${d?'Edit':'Set date'}</button>`:''}</div>`};
+function sjd(k){$('#mc').innerHTML=`<h3>${e(M[k])} · Joining date</h3><label>Joined on</label><input id="xjn" type="date" value="${jdt(k)}"><p class="sm">Invoices dated before this day are not shared with ${e(M[k])}. No invoice is changed.</p><button class="big" onclick="sjs(${k})">Save joining date</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
+async function sjs(k){const d=$('#xjn').value;if(!d)return alert('Choose the joining date.');
+const n=all.filter(i=>i.date<d&&pt(k,i)).length;
+if(n&&!confirm(n+' invoice'+(n>1?'s':'')+' dated before '+fjd(d)+' will no longer be shared with '+M[k]+'. The invoices themselves are not changed.\n\nSave this joining date?'))return;
+const r=EX.find(r=>r.type==='mjoin'&&r.mid===k);
+await rq(xs('readwrite').put(r?{...r,date:d}:{type:'mjoin',mid:k,name:M[k],date:d,ts:Date.now()}));await xl();cm();toast('Joining date saved ')}
 
 /* ---- insights, category report, backup reminder ---- */
 const ins=c=>{const l=inM(mon);if(!l.length)return '';const d=new Date(+mon.slice(0,4),+mon.slice(5),0).getDate(),now=today(),dd=now.startsWith(mon)?+now.slice(8):d;
