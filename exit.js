@@ -49,7 +49,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().map(k=>{const x=st(k);return `<div class="inv"><div class="row"><b>${M[k]}</b>${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div><button class="${x?'alt':'del'}" style="width:100%;margin-top:8px" onclick="${x?'rst':'rem'}(${k})">${x?'Restore member':'Remove member'}</button></div>`}).join('')}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v13</div></div>`;
+const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().filter(k=>vis(k,mcc())).map(k=>{const x=st(k);return `<div class="inv"><div class="row"><div><b>${M[k]}</b><div class="sm">${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div></div><button class="mini alt" onclick="${x?'rst':'rem'}(${k})">${x?'Restore':'Remove'}</button></div></div>`}).join('')}${vx(mcc())}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v15</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -95,9 +95,18 @@ if(M.some(x=>x.toUpperCase()===n))return alert('That name already exists.');
 if(M.length>=12)return alert('Maximum 12 members.');
 await rq(xs('readwrite').add({type:'join',member:M.length,name:n,date:d,ts:Date.now()}));await xl();cm();toast('Done ')}
 
+/* ---- hide members who have left AND are fully settled (nothing owed either way); one tap shows them again ---- */
+let SHL=false;
+const gone=(k,c)=>!!st(k)&&c.bal[k]===0;
+const mcc=()=>calc(inM(mon));
+vis=(k,c)=>SHL||!gone(k,c);
+vx=c=>{const n=ids().filter(k=>gone(k,c)).length;return n?`<button class="mini alt np" style="margin-top:10px" onclick="tsh()">${SHL?'Hide':'Show'} settled members (${n})</button>`:''};
+function tsh(){SHL=!SHL;go()}
+
 /* ---- Reports > Everyone: joining date line + New Member badge ---- */
-mh=(k,n)=>{const d=jdt(k),nw=d&&d.slice(0,7)===mon;
-return `<div class="row"><b>${e(n)}</b>${nw?'<span class="nb">New Member</span>':''}</div><div class="row jd"><span>Joined: ${d?fjd(d):'Not set'}</span>${k<4?`<button class="mini alt np" onclick="sjd(${k})">${d?'Edit':'Set date'}</button>`:''}</div>`};
+BE=()=>'';
+mh=(k,n,c)=>{const d=jdt(k),nw=d&&d.slice(0,7)===mon;
+return `<div class="row"><b>${e(n)}</b><b style="text-align:right">${bal(c.bal[k])}</b></div><div class="row jd" style="flex-wrap:wrap;justify-content:flex-start;gap:4px 10px"><span>Joined: ${d?fjd(d):'Not set'}${k<4?`<span class="lk np" onclick="sjd(${k})">${d?'Edit':'Set date'}</span>`:''}</span>${nw?'<span class="nb">New Member</span>':''}</div>`};
 function sjd(k){$('#mc').innerHTML=`<h3>${e(M[k])} · Joining date</h3><label>Joined on</label><input id="xjn" type="date" value="${jdt(k)}"><p class="sm">Invoices dated before this day are not shared with ${e(M[k])}. No invoice is changed.</p><button class="big" onclick="sjs(${k})">Save joining date</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
 async function sjs(k){const d=$('#xjn').value;if(!d)return alert('Choose the joining date.');
 const n=all.filter(i=>i.date<d&&pt(k,i)).length;
