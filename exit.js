@@ -51,7 +51,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().filter(k=>vis(k,mcc())).map(k=>{const x=st(k);return `<div class="inv"><div class="row"><div><b>${M[k]}</b><div class="sm">${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div></div><button class="mini alt" onclick="${x?'rst':'rem'}(${k})">${x?'Restore':'Remove'}</button></div></div>`}).join('')}${vx(mcc())}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v16</div></div>`;
+const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().filter(k=>vis(k,mcc())).map(k=>{const x=st(k);return `<div class="inv"><div class="row"><div><b>${M[k]}</b><div class="sm">${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div></div><button class="mini alt" onclick="${x?'rst':'rem'}(${k})">${x?'Restore':'Remove'}</button></div></div>`}).join('')}${vx(mcc())}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v17</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -108,13 +108,22 @@ function tsh(){SHL=!SHL;go()}
 /* ---- Reports > Everyone: joining date line + New Member badge ---- */
 BE=(k,c)=>{const v=c.co&&c.co[k];if(!v)return '';const s=EX.find(r=>r.type==='carry'&&r.next===mon);return `<div class="sm">Carried from ${mlab(s?s.mon:mprev(mon))}: ${v<0?'owes':'gets'} AED ${f(Math.abs(v))}</div>`};
 mh=(k,n,c)=>{const d=jdt(k),nw=d&&d.slice(0,7)===mon;
-return `<div class="row"><b>${e(n)}</b><b style="text-align:right">${bal(c.bal[k])}</b></div><div class="row jd" style="flex-wrap:wrap;justify-content:flex-start;gap:4px 10px"><span>Joined: ${d?fjd(d):'Not set'}${k<4?`<span class="lk np" onclick="sjd(${k})">${d?'Edit':'Set date'}</span>`:''}</span>${nw?'<span class="nb">New Member</span>':''}</div>`};
+return `<div class="row"><b>${e(n)}</b><b style="text-align:right">${bal(c.bal[k])}</b></div><div class="row jd" style="flex-wrap:wrap;justify-content:flex-start;gap:4px 10px"><span>Joined: ${d?fjd(d):'Not set'}<span class="lk np" onclick="sjd(${k})">${d?'Edit':'Set date'}</span></span>${nw?'<span class="nb">New Member</span>':''}</div>`};
 function sjd(k){$('#mc').innerHTML=`<h3>${e(M[k])} · Joining date</h3><label>Joined on</label><input id="xjn" type="date" value="${jdt(k)}"><p class="sm">Invoices dated before this day are not shared with ${e(M[k])}. No invoice is changed.</p><button class="big" onclick="sjs(${k})">Save joining date</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
+const jchg=(k,d)=>{const r=EX.find(r=>(r.type==='mjoin'&&r.mid===k)||(r.type==='join'&&r.member===k)),old=r?r.date:'';
+if(d===old)return{same:1};
+const lt=EX.filter(x=>x.type==='exit'&&x.member===k).map(x=>x.date).sort().pop();
+if(lt&&d>lt)return{err:M[k]+' left on '+fjd(lt)+', so the joining date cannot be after that.'};
+const later=!old||d>old,lo=!old?'0000-00-00':later?old:d,hi=later?d:old,aff=all.filter(i=>i.date>=lo&&i.date<hi&&(!later||pt(k,i)));
+const cl=[d,old,...aff.map(i=>i.date)].filter(Boolean).find(v=>isClosed(v.slice(0,7)));
+if(cl)return{err:mlab(cl.slice(0,7))+' is closed, so this joining date cannot be changed. (Settlement > Reopen month first.)'};
+const n=aff.length;
+return{r,n,msg:!n?'':later?n+' invoice'+(n>1?'s':'')+' dated before '+fjd(d)+' will no longer be shared with '+M[k]+'.':n+' invoice'+(n>1?'s':'')+' dated '+fjd(d)+' to '+fjd(old)+' may now be shared with '+M[k]+'.'}};
 async function sjs(k){const d=$('#xjn').value;if(!d)return alert('Choose the joining date.');
-const n=all.filter(i=>i.date<d&&pt(k,i)).length;
-if(n&&!confirm(n+' invoice'+(n>1?'s':'')+' dated before '+fjd(d)+' will no longer be shared with '+M[k]+'. The invoices themselves are not changed.\n\nSave this joining date?'))return;
-const r=EX.find(r=>r.type==='mjoin'&&r.mid===k);
-await rq(xs('readwrite').put(r?{...r,date:d}:{type:'mjoin',mid:k,name:M[k],date:d,ts:Date.now()}));await xl();cm();toast('Joining date saved ')}
+const j=jchg(k,d);if(j.same)return cm();if(j.err)return alert(j.err);
+if(j.msg&&!confirm(j.msg+' The invoices themselves are not changed.\n\nSave this joining date?'))return;
+if(j.r)await rq(xs('readwrite').put({...j.r,date:d}));else await rq(xs('readwrite').add({type:'mjoin',mid:k,name:M[k],date:d,ts:Date.now()}));
+await xl();cm();toast('Joining date saved ')}
 
 /* ---- insights, category report, backup reminder ---- */
 const ins=c=>{const l=inM(mon);if(!l.length)return '';const d=new Date(+mon.slice(0,4),+mon.slice(5),0).getDate(),now=today(),dd=now.startsWith(mon)?+now.slice(8):d;
@@ -135,7 +144,7 @@ const _a=add;
 add=()=>{const o=edit?all.find(i=>i.id===edit):null,d=o?o.date:today(),a=avail(d,o),sel=o?ids().filter(k=>pt(k,o)):dpart(d);
 return _a().replace(/<label>Paid by<\/label><div class="pay">[\s\S]*?<\/div>/,()=>'<label>Paid by</label><div class="pay" id="ppb">'+ppl(a,o?o.payer:-1)+'</div>').replace('<input id="dt" type="date"','<input id="dt" type="date" onchange="spd()"').replace('<label>Invoice photo',()=>spb(a,sel)+'<label>Invoice photo')};
 function spd(){const d=$('#dt').value;if(!d)return;const o=edit?all.find(i=>i.id===edit):null,cp=document.querySelector('input[name=pp]:checked'),cur=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value),a=avail(d,o),sel=edit?cur.filter(k=>a.includes(k)):dpart(d);$('#ppb').innerHTML=ppl(a,cp?+cp.value:-1);$('#spb').innerHTML=spi(a,sel)}
-save=async()=>{const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked'),sp=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value);
+save=async()=>{const g=i=>$('#'+i).value.trim(),a=Math.round(Number(g('amt'))*100),p=document.querySelector('input[name=pp]:checked'),sp=[...document.querySelectorAll('input[name=sp]:checked')].map(x=>+x.value).filter(k=>!jdt(k)||jdt(k)<=($('#dt')||{}).value);
 if(!g('dt')||!g('shop')||!(a>0)||!p)return alert('Please enter date, shop, an amount above 0, and who paid.');
 if(!sp.length)return alert('Select at least one member to split this bill between.');
 const dp=dupOf(g('no'),g('dt'),a,g('shop'),edit);if(dp&&!confirm('This looks like a duplicate of a saved invoice:\n'+dp.shop+' · '+dp.date+' · AED '+f(dp.amt)+(dp.no?' · #'+dp.no:'')+'\n\nSave anyway?'))return;
@@ -191,14 +200,16 @@ const itemTbl=it=>it.length?{t:'tbl',cols:[{l:'#',w:.05},{l:'Date',w:.14},{l:'Sh
 const MU='#6B5B8A';
 const byDate=l=>l.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
 function monthDoc(){const l=inM(mon),c=calc(l),it=byDate(l),act=ids().filter(k=>on(k,mon+'-31')||c.p[k]||c.sh[k]);
+const cin=EX.filter(r=>r.type==='carry'&&r.next===mon),stt=x=>{const cr=fcarry(mon,x);if(cr)return 'Carried to '+mshort(cr.next);const q=pdx(x);return q&&q.amt===x.amt?'Paid':'Due'};
 const mn=new Date(mon+'-01T00:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'}),ex=EX.filter(x=>x.type==='exit'&&(x.from||x.date).slice(0,7)<=mon&&x.date.slice(0,7)>=mon);
 return{title:'SETTLEMENT INVOICE',no:'MM-'+mon.replace('-',''),s:[
 {t:'cards',a:[['Billing period',mn],['Invoices',String(c.n)],['Members',String(act.length)],['Currency','AED']]},
 {t:'cards',a:[['Total expenses',AED(c.t)],['Average share',AED(avg(c))],['Largest invoice',it.length?AED(Math.max(...it.map(i=>i.amt))):'-']]},
 {t:'sec',l:'Member summary'},
 {t:'tbl',cols:[{l:'Member',w:.28,b:1},{l:'Paid',w:.2,a:'r'},{l:'Share',w:.2,a:'r'},{l:'Balance',w:.32,a:'r'}],rows:act.map(k=>({c:[M[k],AED(c.p[k]),AED(c.sh[k]),sgn(c.bal[k])+(c.bal[k]>0?'  receives':c.bal[k]<0?'  pays':'  settled')],col:[0,0,0,c.bal[k]>0?'#15803D':c.bal[k]<0?'#B91C1C':MU]}))},
+...(cin.length?[{t:'sec',l:'Carried from '+mlab(cin[0].mon)},{t:'tbl',cols:[{l:'From',w:.34,b:1},{l:'To',w:.34,b:1},{l:'Amount',w:.32,a:'r'}],rows:cin.map(r=>[M[r.from],M[r.to],AED(r.amt)])},{t:'note',s:'These amounts are already included in the balances above.'}]:[]),
 {t:'sec',l:'Settlement - who pays whom'},
-c.tr.length?{t:'tbl',cols:[{l:'From',w:.34,b:1},{l:'To',w:.34,b:1},{l:'Amount',w:.32,a:'r'}],rows:c.tr.map(x=>[M[x.from],M[x.to],AED(x.amt)])}:{t:'note',s:'All settled. No payments are due for this month.'},
+c.tr.length?{t:'tbl',cols:[{l:'From',w:.26,b:1},{l:'To',w:.26,b:1},{l:'Amount',w:.22,a:'r'},{l:'Status',w:.26}],rows:c.tr.map(x=>[M[x.from],M[x.to],AED(x.amt),stt(x)])}:{t:'note',s:'All settled. No payments are due for this month.'},
 ...ex.map(x=>({t:'note',s:M[x.member]+' left on '+fd(x.date)+'; final settlement saved ('+res(x)[0]+' '+AED(Math.abs(x.fin))+').'})),
 {t:'sec',l:'Itemised invoices'},itemTbl(it)]}}
 function finalDoc(r){const k=r.member,lab=res(r)[0],it=byDate(all.filter(i=>(r.ids||[]).includes(i.id)));

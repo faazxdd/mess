@@ -284,7 +284,7 @@ ox.putImageData(oi,0,0);return o}
 const SS=t=>{const el=$('#scst');if(el)el.textContent=t};
 function fillF(id,v){const el=$('#'+id);if(!el||!v)return false;
 if(el.value&&el.dataset.auto!=='1'&&!(id==='dt'&&el.value===today()&&!edit))return false;
-el.value=v;el.dataset.auto='1';el.style.boxShadow='0 0 0 2px #4ADE80';setTimeout(()=>el.style.boxShadow='',5000);return true}
+el.value=v;el.dataset.auto='1';el.style.boxShadow='0 0 0 2px #4ADE80';setTimeout(()=>el.style.boxShadow='',5000);if(id==='dt'&&typeof spd==='function')spd();return true}
 function applyScan(d){const ok=[],miss=[];
 [['dt',d.date,'date'],['shop',d.shop,'shop'],['no',d.no,'invoice no'],['amt',d.amt,'amount'],['ds',d.desc,'items']].forEach(([id,v,n])=>(fillF(id,v)?ok:miss).push(n));
 const ct=$('#ct');if(d.cat&&ct&&!edit)ct.value=d.cat;
@@ -310,5 +310,5 @@ finally{try{await wk?.terminate()}catch(_){}scanning=0}}
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js?v=16"></script>
+<script src="exit.js?v=17"></script>
 </body></html>
