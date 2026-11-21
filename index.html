@@ -112,21 +112,23 @@ const sh=p.map((_,i)=>b+(i<r?1:0)),bal=p.map((x,i)=>x-sh[i]),d=[],c=[],tr=[];
 bal.forEach((x,i)=>x<0?d.push([i,-x]):x>0&&c.push([i,x]));
 while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);const m=Math.min(d[0][1],c[0][1]);tr.push({from:d[0][0],to:c[0][0],amt:m});d[0][1]-=m;c[0][1]-=m;if(!d[0][1])d.shift();if(!c[0][1])c.shift()}
 return{p,t,sh,bal,tr,n:l.length}}
-const inM=m=>all.filter(i=>i.date.startsWith(m));
+const inM=m=>{const r=all.filter(i=>i.date.startsWith(m));r.mon=m;return r};
 function vis(k,c){return true} /* is this member listed? exit.js hides left members who are fully settled */
 function vx(c){return ''}
 function BE(i,c){return bal(c.bal[i])}
+function cstat(x){return null}
+function carryBtn(x){return ''}
 function mh(i,n){return '<b>'+n+'</b>'} /* name row in Reports > Everyone; exit.js overrides it to add the joining date */
 const mb=()=>`<div class="np"><label>Month</label><input type="month" value="${mon}" onchange="mon=this.value||mon;go()"></div>`;
 const bal=x=>x===0?'<span class="sm">Balanced </span>':x<0?`<span class="neg">Owes · AED ${f(-x)}</span>`:`<span class="pos">Gets back · AED ${f(x)}</span>`;
 const pdx=x=>typeof EX!=='undefined'?EX.find(r=>r.type==='paid'&&r.mon===mon&&r.from===x.from&&r.to===x.to):null;
 const settle=c=>{const by={};c.tr.forEach(x=>(by[x.from]=by[x.from]||[]).push(x));
-const pst=x=>{const r=pdx(x);if(r&&r.amt===x.amt)return `<div class="pst np"><span class="pos">Paid on ${r.date}</span><button class="mini alt" onclick="unpaid(${r.id})">Undo</button></div>`;
-return `<div class="pst np"><span class="sm">${r?'Earlier paid AED '+f(r.amt)+', amount changed':'Not paid yet'}</span><button class="mini" onclick="mpaid(${x.from},${x.to},${x.amt})">Mark as paid</button></div>`};
-const np=c.tr.filter(x=>{const r=pdx(x);return r&&r.amt===x.amt}).length;
+const pst=x=>{const cs=cstat(x);if(cs)return cs;const r=pdx(x);if(r&&r.amt===x.amt)return `<div class="pst np"><span class="pos">Paid on ${r.date}</span><button class="mini alt" onclick="unpaid(${r.id})">Undo</button></div>`;
+return `<div class="pst np" style="flex-wrap:wrap"><span class="sm">${r?'Earlier paid AED '+f(r.amt)+', amount changed':'Not paid yet'}</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="mini" onclick="mpaid(${x.from},${x.to},${x.amt})">Mark as paid</button>${carryBtn(x)}</div></div>`};
+const np=c.tr.filter(x=>{const r=pdx(x);return (r&&r.amt===x.amt)||cstat(x)}).length;
 const pay=Object.keys(by).map(i=>{const l=by[i],t=l.reduce((a,x)=>a+x.amt,0);return `<div class="sc neg2"><div class="row"><b>${M[i]}</b><b class="neg">AED ${f(t)}</b></div><div class="sm" style="margin:2px 0 6px">Needs to pay</div>${l.map(x=>`<div class="tr"><div class="row"><span><span class="sm">to</span> <b>${M[x.to]}</b></span><b>AED ${f(x.amt)}</b></div>${pst(x)}</div>`).join('')}</div>`}).join('');
 const get=c.bal.map((x,i)=>x>0?`<div class="sc pos2"><div class="row"><b>${M[i]}</b><b class="pos">AED ${f(x)}</b></div><div class="sm">Total to receive</div></div>`:'').join('');
-return c.tr.length?`<div class="sm np" style="margin-bottom:6px">${np} of ${c.tr.length} payments marked as paid</div><h3>Need to pay</h3>${pay}<h3>Will receive</h3>${get}`:'<p class="sm">All settled. Nobody owes anyone.</p>'};
+return c.tr.length?`<div class="sm np" style="margin-bottom:6px">${np} of ${c.tr.length} payments paid or carried forward</div><h3>Need to pay</h3>${pay}<h3>Will receive</h3>${get}`:'<p class="sm">All settled. Nobody owes anyone.</p>'};
 function shr(){const c=calc(inM(mon));let s=`Mess ${mon}\nTotal expenses: AED ${f(c.t)}\nEqual share: AED ${f(c.t/4)}\n\n`;M.forEach((n,i)=>s+=`${n}: Paid AED ${f(c.p[i])}\n`);s+='\n';c.tr.forEach(t=>s+=`${M[t.from]} → ${M[t.to]}: AED ${f(t.amt)}\n`);navigator.share?navigator.share({text:s}).catch(()=>{}):location.href='https://wa.me/?text='+encodeURIComponent(s)}
 function dash(){const c=calc(inM(mon)),mx=Math.max(...c.p,1);
 const ms=[...Array(6)].map((_,k)=>{const d=new Date(+mon.slice(0,4),+mon.slice(5)-6+k,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}),mt=ms.map(x=>calc(inM(x)).t),mm=Math.max(...mt,1);
@@ -308,5 +310,5 @@ finally{try{await wk?.terminate()}catch(_){}scanning=0}}
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
-<script src="exit.js?v=15"></script>
+<script src="exit.js?v=16"></script>
 </body></html>

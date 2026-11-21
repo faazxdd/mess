@@ -27,7 +27,9 @@ const pt=(k,i)=>(!jdt(k)||i.date>=jdt(k))&&(i.part?i.part.includes(k):(on(k,i.da
 const dpart=d=>ids().filter(k=>{if(!on(k,d))return false;const x=st(k);return !(x&&d>=x[0])});
 const shs=l=>{const sh=Array(M.length).fill(0),g={};l.forEach(i=>{const a=ids().filter(k=>pt(k,i));(g[a]=g[a]||{a,t:0}).t+=i.amt});Object.values(g).forEach(({a,t})=>{if(!a.length)return;const b=Math.floor(t/a.length),r=t%a.length;a.forEach((k,j)=>sh[k]+=b+(j<r?1:0))});return sh};
 function calc(l){const n=M.length,p=Array(n).fill(0);l.forEach(i=>p[i.payer]+=i.amt);
-const sh=shs(l),t=p.reduce((a,b)=>a+b,0),bal=p.map((x,i)=>x-sh[i]),d=[],c=[],tr=[];
+const sh=shs(l),t=p.reduce((a,b)=>a+b,0),bal=p.map((x,i)=>x-sh[i]),d=[],c=[],tr=[],co=Array(n).fill(0);
+/* opening balance: amounts carried forward from the previous month (same total both sides, so it stays balanced) */
+if(l.mon)EX.filter(r=>r.type==='carry'&&r.next===l.mon&&r.from<n&&r.to<n).forEach(r=>{co[r.from]-=r.amt;co[r.to]+=r.amt;bal[r.from]-=r.amt;bal[r.to]+=r.amt});
 /* a member with a saved final settlement is treated as paid up for the invoices inside that settlement period */
 EX.filter(x=>x.type==='exit').forEach(x=>{const k=x.member,iv=l.filter(i=>i.payer===k||pt(k,i)),S=iv.filter(i=>i.date>=(x.from||'0000-00-00')&&i.date<=x.date);if(!S.length)return;
 const a=S.length===iv.length?bal[k]:S.reduce((s,i)=>s+(i.payer===k?i.amt:0),0)-shs(S)[k];let r=Math.abs(a);
@@ -35,7 +37,7 @@ bal.map((b,i)=>[i,b]).filter(([i,b])=>i!==k&&(a<0?b>0:b<0)).sort((u,v)=>Math.abs
 bal[k]+=a<0?Math.abs(a)-r:-(Math.abs(a)-r)});
 bal.forEach((x,i)=>x<0?d.push([i,-x]):x>0&&c.push([i,x]));
 while(d.length&&c.length){d.sort((a,b)=>b[1]-a[1]);c.sort((a,b)=>b[1]-a[1]);const m=Math.min(d[0][1],c[0][1]);tr.push({from:d[0][0],to:c[0][0],amt:m});d[0][1]-=m;c[0][1]-=m;if(!d[0][1])d.shift();if(!c[0][1])c.shift()}
-return{p,t,sh,bal,tr,n:l.length}}
+return{p,t,sh,bal,tr,n:l.length,co}}
 
 /* ---- keep existing screens, fix "equal share" / member count ---- */
 const avg=c=>{const n=ids().filter(k=>on(k,mon+'-31')).length;return n?c.t/n:0};
@@ -49,7 +51,7 @@ shr=()=>pdfOut(renderInv(monthDoc()),'Mess-Settlement-'+mon+'.pdf');
 
 /* ---- Members card ---- */
 const res=r=>r.fin>0?['GETS REFUND','pos']:r.fin<0?['NEEDS TO PAY','neg']:['SETTLED',''];
-const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().filter(k=>vis(k,mcc())).map(k=>{const x=st(k);return `<div class="inv"><div class="row"><div><b>${M[k]}</b><div class="sm">${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div></div><button class="mini alt" onclick="${x?'rst':'rem'}(${k})">${x?'Restore':'Remove'}</button></div></div>`}).join('')}${vx(mcc())}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v15</div></div>`;
+const mcard=()=>`<div class="card np"><h3>Members</h3>${ids().filter(k=>vis(k,mcc())).map(k=>{const x=st(k);return `<div class="inv"><div class="row"><div><b>${M[k]}</b><div class="sm">${x?`<span class="neg">Left ${x[0]}</span>`:'<span class="pos">Active</span>'}</div></div><button class="mini alt" onclick="${x?'rst':'rem'}(${k})">${x?'Restore':'Remove'}</button></div></div>`}).join('')}${vx(mcc())}<button class="big" style="margin:10px 0" onclick="amb()">Add new member</button>${EX.filter(x=>x.type==='exit').reverse().map(x=>`<div class="inv" onclick="xv(${x.id})"><div class="row"><b>${M[x.member]} · ${x.date}</b><b class="${res(x)[1]}">AED ${f(Math.abs(x.fin))}</b></div><div class="sm">${res(x)[0]}</div></div>`).join('')}<div class="sm" style="text-align:center;margin-top:10px">App v16</div></div>`;
 
 /* ---- remove flow ---- */
 function rem(k){const lx=EX.filter(x=>x.type==='exit'&&x.member===k).pop(),d=lx?new Date(Date.parse(lx.date+'T00:00:00Z')+864e5).toISOString().slice(0,10):(all.map(i=>i.date).sort()[0]||today());
@@ -104,7 +106,7 @@ vx=c=>{const n=ids().filter(k=>gone(k,c)).length;return n?`<button class="mini a
 function tsh(){SHL=!SHL;go()}
 
 /* ---- Reports > Everyone: joining date line + New Member badge ---- */
-BE=()=>'';
+BE=(k,c)=>{const v=c.co&&c.co[k];if(!v)return '';const s=EX.find(r=>r.type==='carry'&&r.next===mon);return `<div class="sm">Carried from ${mlab(s?s.mon:mprev(mon))}: ${v<0?'owes':'gets'} AED ${f(Math.abs(v))}</div>`};
 mh=(k,n,c)=>{const d=jdt(k),nw=d&&d.slice(0,7)===mon;
 return `<div class="row"><b>${e(n)}</b><b style="text-align:right">${bal(c.bal[k])}</b></div><div class="row jd" style="flex-wrap:wrap;justify-content:flex-start;gap:4px 10px"><span>Joined: ${d?fjd(d):'Not set'}${k<4?`<span class="lk np" onclick="sjd(${k})">${d?'Edit':'Set date'}</span>`:''}</span>${nw?'<span class="nb">New Member</span>':''}</div>`};
 function sjd(k){$('#mc').innerHTML=`<h3>${e(M[k])} · Joining date</h3><label>Joined on</label><input id="xjn" type="date" value="${jdt(k)}"><p class="sm">Invoices dated before this day are not shared with ${e(M[k])}. No invoice is changed.</p><button class="big" onclick="sjs(${k})">Save joining date</button><button class="alt" style="width:100%;margin-top:10px" onclick="cm()">Cancel</button>`;$('#md').style.display='flex'}
@@ -213,5 +215,50 @@ async function pdfOut(b,n){const fl=new File([b],n,{type:'application/pdf'});try
 const xpdf=()=>pdfOut(renderInv(finalDoc(XR)),'Final-Settlement-'+M[XR.member]+'-'+XR.date+'.pdf');
 
 /* ---- settlement: mark each payment as paid (stored with the member records, included in backups) ---- */
-async function mpaid(a,b,m){await rq(xs('readwrite').add({type:'paid',mon,from:a,to:b,amt:m,date:today(),ts:Date.now()}));await xl();toast('Marked as paid ')}
-async function unpaid(id){await rq(xs('readwrite').delete(id));await xl();toast('Payment mark removed')}
+async function mpaid(a,b,m){if(isClosed(mon))return alert(mlab(mon)+' is closed.');await rq(xs('readwrite').add({type:'paid',mon,from:a,to:b,amt:m,date:today(),ts:Date.now()}));await xl();toast('Marked as paid ')}
+async function unpaid(id){const r=EX.find(x=>x.id===id);if(r&&isClosed(r.mon))return alert(mlab(r.mon)+' is closed. Reopen it first to change this.');await rq(xs('readwrite').delete(id));await xl();toast('Payment mark removed')}
+
+
+/* ===== Month end: carry a balance to next month, close (lock) a month ===== */
+const mnext=m=>{const d=new Date(+m.slice(0,4),+m.slice(5),1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const mprev=m=>{const d=new Date(+m.slice(0,4),+m.slice(5)-2,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const mlab=m=>MNM[+m.slice(5)-1]+' '+m.slice(0,4), mshort=m=>MNM[+m.slice(5)-1].slice(0,3);
+const isClosed=m=>EX.some(r=>r.type==='close'&&r.mon===m);
+const fcarry=(m,x)=>EX.find(r=>r.type==='carry'&&r.mon===m&&r.from===x.from&&r.to===x.to&&r.amt===x.amt);
+const lockMsg=m=>mlab(m)+' is closed, so its bills cannot be added, edited or deleted. (Settlement > Reopen month, if you really need to change it.)';
+cstat=x=>{const r=fcarry(mon,x);return r?`<div class="pst np"><span class="sm">Carried to ${mlab(r.next)}</span>${isClosed(mon)?'':`<button class="mini alt" onclick="ucarry(${r.id})">Undo</button>`}</div>`:null};
+carryBtn=x=>`<button class="mini alt" onclick="mcarry(${x.from},${x.to},${x.amt})">Carry to ${mshort(mnext(mon))}</button>`;
+async function mcarry(a,b,m,quiet){const nx=mnext(mon);
+if(isClosed(mon)||isClosed(nx))return alert(mlab(isClosed(mon)?mon:nx)+' is closed.');
+const gl=[a,b].find(k=>st(k));if(gl!==undefined)return alert(M[gl]+' has left the mess, so this payment must be settled in cash.');
+for(const o of EX.filter(r=>r.type==='carry'&&r.mon===mon&&r.from===a&&r.to===b))await rq(xs('readwrite').delete(o.id));
+await rq(xs('readwrite').add({type:'carry',mon,next:nx,from:a,to:b,amt:m,date:today(),ts:Date.now()}));await xl();if(!quiet)toast('Carried to '+mlab(nx))}
+async function ucarry(id){const r=EX.find(x=>x.id===id);if(!r)return;if(isClosed(r.mon)||isClosed(r.next))return alert(mlab(isClosed(r.mon)?r.mon:r.next)+' is closed. Reopen it first.');await rq(xs('readwrite').delete(id));await xl();toast('Carry removed')}
+const openTr=c=>c.tr.filter(x=>!(pdx(x)&&pdx(x).amt===x.amt)&&!fcarry(mon,x));
+const staleC=c=>EX.filter(r=>r.type==='carry'&&r.mon===mon&&!c.tr.some(x=>x.from===r.from&&x.to===r.to&&x.amt===r.amt));
+async function carryAll(){const c=mcc(),nx=mnext(mon);if(isClosed(nx))return alert(mlab(nx)+' is closed.');
+let skip=[];for(const x of openTr(c)){if(st(x.from)||st(x.to)){skip.push(M[x.from]+' → '+M[x.to]);continue}await mcarry(x.from,x.to,x.amt,1)}
+toast('Carried to '+mlab(nx));if(skip.length)alert('Not carried (someone has left, pay in cash):\n'+skip.join('\n'))}
+async function dropStale(){for(const r of staleC(mcc()))await rq(xs('readwrite').delete(r.id));await xl();toast('Outdated carries removed')}
+async function closeM(){const c=mcc();if(mon>today().slice(0,7))return alert('You can close a month only after it has started.');
+if(openTr(c).length||staleC(c).length)return alert('First mark every payment as paid or carry it forward.');
+if(!confirm('Close '+mlab(mon)+'?\n\nIts bills will be locked (no add, edit or delete). Carried amounts start '+mlab(mnext(mon))+' as opening balances.'))return;
+await rq(xs('readwrite').add({type:'close',mon,date:today(),ts:Date.now()}));await xl();toast(mlab(mon)+' closed')}
+async function reopenM(){const nx=mnext(mon);if(isClosed(nx))return alert('Reopen '+mlab(nx)+' first.');
+if(!confirm('Reopen '+mlab(mon)+'? Bills of this month can be changed again.'))return;
+for(const r of EX.filter(r=>r.type==='close'&&r.mon===mon))await rq(xs('readwrite').delete(r.id));await xl();toast(mlab(mon)+' reopened')}
+const monthPanel=()=>{const c=mcc(),cin=EX.filter(r=>r.type==='carry'&&r.next===mon);let h='';
+if(cin.length)h+=`<div class="card"><h3>Carried from ${mlab(cin[0].mon)}</h3>${cin.map(r=>`<div class="row"><span><b>${M[r.from]}</b> <span class="sm">owes</span> <b>${M[r.to]}</b></span><b>AED ${f(r.amt)}</b></div>`).join('')}<div class="sm" style="margin-top:6px">Already included in the balances above.</div></div>`;
+if(isClosed(mon))return h+`<div class="card"><h3>🔒 ${mlab(mon)} is closed</h3><div class="sm">Bills of this month are locked.</div><button class="mini alt np" style="margin-top:10px" onclick="reopenM()">Reopen month</button></div>`;
+if(mon>today().slice(0,7))return h;
+const o=openTr(c).length,s=staleC(c).length,nx=mshort(mnext(mon));
+h+=`<div class="card np"><h3>Month end</h3>`;
+if(s)h+=`<div class="sm" style="margin-bottom:8px">${s} carried amount no longer matches the current balance.</div><button class="alt" style="width:100%;margin-bottom:8px" onclick="dropStale()">Remove outdated carries</button>`;
+if(o)h+=`<div class="sm" style="margin-bottom:8px">${o} payment${o>1?'s':''} still open. Mark as paid, or carry to ${nx}.</div><button class="alt" style="width:100%;margin-bottom:8px" onclick="carryAll()">Carry all open to ${nx}</button>`;
+h+=`<button class="big" style="margin:0" onclick="closeM()">Close ${mlab(mon)}</button><div class="sm" style="margin-top:8px">Closing locks this month and starts ${mlab(mnext(mon))} fresh.</div></div>`;
+return h};
+{const _s2=set;set=()=>_s2().replace('<button class="big np" onclick="shr()">',()=>monthPanel()+'<button class="big np" onclick="shr()">')}
+/* closed months are read-only */
+{const _del=del;del=async id=>{const o=all.find(i=>i.id===id);if(o&&isClosed(o.date.slice(0,7))){cm();return alert(lockMsg(o.date.slice(0,7)))}return _del(id)}}
+{const _sv=save;save=async()=>{const d=($('#dt')||{}).value||'',o=edit?all.find(i=>i.id===edit):null;for(const m of [d.slice(0,7),o&&o.date.slice(0,7)])if(m&&isClosed(m))return alert(lockMsg(m));return _sv()}}
+{const _ad=add;add=()=>{const o=edit?all.find(i=>i.id===edit):null;if(o&&isClosed(o.date.slice(0,7))){edit=null;alert(lockMsg(o.date.slice(0,7)))}return _ad()}}
